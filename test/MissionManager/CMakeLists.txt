@@ -7,6 +7,7 @@ target_sources(${CMAKE_PROJECT_NAME}
     PRIVATE
         CameraCalcTest.cc CameraCalcTest.h
         CameraSectionTest.cc CameraSectionTest.h
+        CameraSpecTest.cc CameraSpecTest.h
         CorridorScanComplexItemTest.cc CorridorScanComplexItemTest.h
         FWLandingPatternTest.cc FWLandingPatternTest.h
         LandingComplexItemTest.cc LandingComplexItemTest.h
@@ -14,12 +15,14 @@ target_sources(${CMAKE_PROJECT_NAME}
         MissionCommandTreeTest.cc MissionCommandTreeTest.h
         MissionControllerManagerTest.cc MissionControllerManagerTest.h
         MissionControllerTest.cc MissionControllerTest.h
+        MissionControllerTreeTest.cc MissionControllerTreeTest.h
         MissionItemTest.cc MissionItemTest.h
         MissionManagerTest.cc MissionManagerTest.h
         MissionSettingsTest.cc MissionSettingsTest.h
         PlanMasterControllerTest.cc PlanMasterControllerTest.h
         QGCMapPolygonTest.cc QGCMapPolygonTest.h
         QGCMapPolylineTest.cc QGCMapPolylineTest.h
+        RallyPointTest.cc RallyPointTest.h
         SectionTest.cc SectionTest.h
         SimpleMissionItemTest.cc SimpleMissionItemTest.h
         SpeedSectionTest.cc SpeedSectionTest.h
@@ -38,13 +41,8 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_
 qt_add_resources(${CMAKE_PROJECT_NAME} "MissionManagerTest_res"
     PREFIX "/unittest"
     FILES
-        100Waypoints.mission
-        100Waypoints.waypoints.txt
-        800Waypoints.mission
-        800Waypoints.waypoints.txt
         MissionPlanner.waypoints
         MissionPlanner.waypoints.txt
-        OldFileFormat.mission
         PolygonAreaTest.kml
         PolygonBadCoordinatesNode.kml
         PolygonBadXml.kml

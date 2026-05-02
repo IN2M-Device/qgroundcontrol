@@ -1,19 +1,10 @@
-/****************************************************************************
- *
- * (c) 2009-2024 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
- *
- * QGroundControl is licensed according to the terms in the file
- * COPYING.md in the root of the source code directory.
- *
- ****************************************************************************/
-
 #include "LinkInterface.h"
+#include "MAVLinkLib.h"
 #include "LinkManager.h"
+#include "AppMessages.h"
 #include "QGCApplication.h"
 #include "QGCLoggingCategory.h"
 #include "MAVLinkSigning.h"
-#include "SettingsManager.h"
-#include "MavlinkSettings.h"
 
 #include <QtQml/QQmlEngine>
 
@@ -51,20 +42,16 @@ bool LinkInterface::mavlinkChannelIsSet() const
 
 bool LinkInterface::initMavlinkSigning()
 {
-    if (!isSecureConnection()) {
-        auto mavlinkSettings = SettingsManager::instance()->mavlinkSettings();
-        const QByteArray signingKeyBytes = mavlinkSettings->mavlink2SigningKey()->rawValue().toByteArray();
-        if (MAVLinkSigning::initSigning(static_cast<mavlink_channel_t>(_mavlinkChannel), signingKeyBytes, MAVLinkSigning::insecureConnectionAccceptUnsignedCallback)) {
-            if (signingKeyBytes.isEmpty()) {
-                qCDebug(LinkInterfaceLog) << "Signing disabled on channel" << _mavlinkChannel;
-            } else {
-                qCDebug(LinkInterfaceLog) << "Signing enabled on channel" << _mavlinkChannel;
-            }
-        } else {
-            qCWarning(LinkInterfaceLog) << "Failed To enable Signing on channel" << _mavlinkChannel;
-            // FIXME: What should we do here?
-            return false;
-        }
+    // Always clear any prior signing state on the channel to avoid stale
+    // mavlink_status_t::signing from a previous connection on this channel.
+    // For insecure connections the correct key will be auto-detected from
+    // incoming signed packets via MAVLinkSigning::tryDetectKey().
+    if (MAVLinkSigning::initSigning(static_cast<mavlink_channel_t>(_mavlinkChannel), QByteArrayView(), nullptr)) {
+        qCDebug(LinkInterfaceLog) << "Signing cleared on channel" << _mavlinkChannel
+                                  << (isSecureConnection() ? "(secure)" : "(will auto-detect)");
+    } else {
+        qCWarning(LinkInterfaceLog) << "Failed to initialise signing on channel" << _mavlinkChannel;
+        return false;
     }
 
     return true;
@@ -88,6 +75,7 @@ bool LinkInterface::_allocateMavlinkChannel()
 
     qCDebug(LinkInterfaceLog) << "_allocateMavlinkChannel" << _mavlinkChannel;
 
+    mavlink_set_proto_version(_mavlinkChannel, MAVLINK_VERSION); // We only support v2 protcol
     initMavlinkSigning();
 
     return true;
@@ -138,5 +126,21 @@ void LinkInterface::setSigningSignatureFailure(bool failure)
         if (_signingSignatureFailure) {
             emit communicationError(tr("Signing Failure"), tr("Signing signature mismatch"));
         }
+    }
+}
+
+void LinkInterface::reportMavlinkV1Traffic()
+{
+    if (!_mavlinkV1TrafficReported) {
+        _mavlinkV1TrafficReported = true;
+
+        const SharedLinkConfigurationPtr linkConfig = linkConfiguration();
+        const QString linkName = linkConfig ? linkConfig->name() : QStringLiteral("unknown");
+        qCWarning(LinkInterfaceLog) << "MAVLink v1 traffic detected on link" << linkName;
+        const QString message = tr("MAVLink v1 traffic detected on link '%1'. "
+                                   "%2 only supports MAVLink v2. "
+                                   "Please ensure your vehicle is configured to use MAVLink v2.")
+                                    .arg(linkName).arg(qgcApp()->applicationName());
+        QGC::showAppMessage(message);
     }
 }

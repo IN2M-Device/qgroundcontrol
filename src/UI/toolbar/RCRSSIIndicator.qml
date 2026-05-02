@@ -1,20 +1,8 @@
-/****************************************************************************
- *
- * (c) 2009-2020 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
- *
- * QGroundControl is licensed according to the terms in the file
- * COPYING.md in the root of the source code directory.
- *
- ****************************************************************************/
-
 import QtQuick
 import QtQuick.Layouts
 
 import QGroundControl
 import QGroundControl.Controls
-
-
-
 
 //-------------------------------------------------------------------------
 //-- RC RSSI Indicator
@@ -24,10 +12,10 @@ Item {
     anchors.top:    parent.top
     anchors.bottom: parent.bottom
 
-    property bool showIndicator: _activeVehicle.supportsRadio && _rcRSSIAvailable
+    property bool showIndicator: _activeVehicle.supports.radio && _rcRSSIAvailable
 
     property var    _activeVehicle:     QGroundControl.multiVehicleManager.activeVehicle
-    property bool   _rcRSSIAvailable:   _activeVehicle.rcRSSI > 0 && _activeVehicle.rcRSSI <= 100
+    property bool   _rcRSSIAvailable:   _activeVehicle.rcRSSI.rawValue > 0 && _activeVehicle.rcRSSI.rawValue <= 100
 
     Component {
         id: rcRSSIInfoPage
@@ -40,7 +28,7 @@ Item {
 
                 LabelledLabel {
                     label:      qsTr("RSSI")
-                    labelText:  _activeVehicle.rcRSSI + "%"
+                    labelText:  _activeVehicle.rcRSSI.rawValue + "%"
                 }
             }
         }
@@ -66,7 +54,7 @@ Item {
         SignalStrength {
             anchors.verticalCenter: parent.verticalCenter
             size:                   parent.height * 0.5
-            percent:                _rcRSSIAvailable ? _activeVehicle.rcRSSI : 0
+            percent:                _rcRSSIAvailable ? _activeVehicle.rcRSSI.rawValue : 0
         }
     }
 

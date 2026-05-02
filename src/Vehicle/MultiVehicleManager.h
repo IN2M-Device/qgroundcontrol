@@ -1,28 +1,12 @@
-/****************************************************************************
- *
- * (c) 2009-2024 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
- *
- * QGroundControl is licensed according to the terms in the file
- * COPYING.md in the root of the source code directory.
- *
- ****************************************************************************/
-
-
-/// @file
-///     @author Don Gagne <don@thegagnes.com>
-
 #pragma once
 
 #include <QtCore/QObject>
-#include <QtCore/QLoggingCategory>
 #include <QtQmlIntegration/QtQmlIntegration>
 
 class LinkInterface;
 class Vehicle;
 class QmlObjectListModel;
 class QTimer;
-
-Q_DECLARE_LOGGING_CATEGORY(MultiVehicleManagerLog)
 
 class MultiVehicleManager : public QObject
 {
@@ -44,7 +28,6 @@ public:
     ~MultiVehicleManager();
 
     static MultiVehicleManager *instance();
-    static void registerQmlTypes();
 
     void init();
     Q_INVOKABLE Vehicle *getVehicleById(int vehicleId) const;
@@ -71,7 +54,6 @@ private slots:
     void _vehicleParametersReadyChanged(bool parametersReady);
     void _sendGCSHeartbeat();
     void _vehicleHeartbeatInfo(LinkInterface *link, int vehicleId, int componentId, int vehicleFirmwareType, int vehicleType);
-    void _requestProtocolVersion(unsigned version) const; /// This slot is connected to the Vehicle::requestProtocolVersion signal such that the vehicle manager tries to switch MAVLink to v2 if all vehicles support it
 
 private:
     bool _vehicleExists(int vehicleId);

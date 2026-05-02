@@ -13,8 +13,6 @@ target_sources(${CMAKE_PROJECT_NAME}
         AutoConnectSettings.h
         BatteryIndicatorSettings.cc
         BatteryIndicatorSettings.h
-        BrandImageSettings.cc
-        BrandImageSettings.h
         MavlinkActionsSettings.cc
         MavlinkActionsSettings.h
         FirmwareUpgradeSettings.cc
@@ -27,6 +25,10 @@ target_sources(${CMAKE_PROJECT_NAME}
         FlyViewSettings.h
         GimbalControllerSettings.cc
         GimbalControllerSettings.h
+        JoystickManagerSettings.cc
+        JoystickManagerSettings.h
+        JoystickSettings.cc
+        JoystickSettings.h
         MavlinkSettings.cc
         MavlinkSettings.h
         OfflineMapsSettings.cc
@@ -37,6 +39,8 @@ target_sources(${CMAKE_PROJECT_NAME}
         RemoteIDSettings.h
         RTKSettings.cc
         RTKSettings.h
+        NTRIPSettings.cc
+        NTRIPSettings.h
         SettingsGroup.cc
         SettingsGroup.h
         SettingsManager.cc

@@ -1,16 +1,7 @@
-/****************************************************************************
- *
- * (c) 2009-2024 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
- *
- * QGroundControl is licensed according to the terms in the file
- * COPYING.md in the root of the source code directory.
- *
- ****************************************************************************/
-
 #include "UDPLink.h"
 #include "AutoConnectSettings.h"
-#include "DeviceInfo.h"
 #include "QGCLoggingCategory.h"
+#include "QGCNetworkHelper.h"
 #include "SettingsManager.h"
 
 #include <QtCore/QMutexLocker>
@@ -84,11 +75,9 @@ void UDPConfiguration::setAutoConnect(bool autoc)
 
 void UDPConfiguration::copyFrom(const LinkConfiguration *source)
 {
-    Q_ASSERT(source);
     LinkConfiguration::copyFrom(source);
 
-    const UDPConfiguration *const udpSource = qobject_cast<const UDPConfiguration*>(source);
-    Q_ASSERT(udpSource);
+    const UDPConfiguration *udpSource = qobject_cast<const UDPConfiguration*>(source);
 
     setLocalPort(udpSource->localPort());
     _targetHosts.clear();
@@ -285,8 +274,9 @@ bool UDPWorker::isConnected() const
 
 void UDPWorker::setupSocket()
 {
-    Q_ASSERT(!_socket);
-    _socket = new QUdpSocket(this);
+    if (!_socket) {
+        _socket = new QUdpSocket(this);
+    }
 
     const QList<QHostAddress> localAddresses = QNetworkInterface::allAddresses();
     _localAddresses = QSet(localAddresses.constBegin(), localAddresses.constEnd());
@@ -354,21 +344,19 @@ void UDPWorker::connectLink()
         qCWarning(UDPLinkLog) << "Failed to join multicast group" << _multicastGroup.toString();
     }
 
-#ifdef QGC_ZEROCONF_ENABLED
-    _registerZeroconf(_udpConfig->localPort());
-#endif
 }
 
 void UDPWorker::disconnectLink()
 {
-#ifdef QGC_ZEROCONF_ENABLED
-    _deregisterZeroconf();
-#endif
-
-    if (isConnected()) {
-        (void) _socket->leaveMulticastGroup(_multicastGroup);
-        _socket->close();
+    if (!isConnected()) {
+        qCDebug(UDPLinkLog) << "Already disconnected";
+        return;
     }
+
+    qCDebug(UDPLinkLog) << "Disconnecting UDP link";
+
+    (void) _socket->leaveMulticastGroup(_multicastGroup);
+    _socket->close();
 
     _sessionTargets.clear();
 }
@@ -487,72 +475,6 @@ void UDPWorker::_onSocketErrorOccurred(QUdpSocket::SocketError error)
     }
 }
 
-#ifdef QGC_ZEROCONF_ENABLED
-void UDPWorker::_zeroconfRegisterCallback(DNSServiceRef sdRef, DNSServiceFlags flags, DNSServiceErrorType errorCode, const char *name, const char *regtype, const char *domain, void *context)
-{
-    Q_UNUSED(sdRef); Q_UNUSED(flags); Q_UNUSED(name); Q_UNUSED(regtype); Q_UNUSED(domain);
-
-    UDPWorker *const worker = static_cast<UDPWorker*>(context);
-    if (errorCode != kDNSServiceErr_NoError) {
-        emit worker->errorOccurred(tr("Zeroconf Register Error: %1").arg(errorCode));
-    }
-}
-
-void UDPWorker::_registerZeroconf(uint16_t port)
-{
-    static constexpr const char *regType = "_qgroundcontrol._udp";
-
-    if (_dnssServiceRef) {
-        qCWarning(UDPLinkLog) << "Already registered zeroconf";
-        return;
-    }
-
-    const DNSServiceErrorType result = DNSServiceRegister(
-        &_dnssServiceRef,
-        0,
-        0,
-        0,
-        regType,
-        NULL,
-        NULL,
-        qToBigEndian(port),
-        0,
-        NULL,
-        &UDPWorker::_zeroconfRegisterCallback,
-        this
-    );
-
-    if (result != kDNSServiceErr_NoError) {
-        _dnssServiceRef = NULL;
-        emit errorOccurred(tr("Error Registering Zeroconf: %1").arg(result));
-        return;
-    }
-
-    const int sockfd = DNSServiceRefSockFD(_dnssServiceRef);
-    if (sockfd == -1) {
-        emit errorOccurred(tr("Invalid sockfd"));
-        return;
-    }
-
-    QSocketNotifier *const socketNotifier = new QSocketNotifier(sockfd, QSocketNotifier::Read, this);
-    (void) connect(socketNotifier, &QSocketNotifier::activated, this, [this, socketNotifier]() {
-        const DNSServiceErrorType error = DNSServiceProcessResult(_dnssServiceRef);
-        if (error != kDNSServiceErr_NoError) {
-            emit errorOccurred(tr("DNSServiceProcessResult Error: %1").arg(error));
-        }
-        socketNotifier->deleteLater();
-    });
-}
-
-void UDPWorker::_deregisterZeroconf()
-{
-    if (_dnssServiceRef) {
-        DNSServiceRefDeallocate(_dnssServiceRef);
-        _dnssServiceRef = NULL;
-    }
-}
-#endif // QGC_ZEROCONF_ENABLED
-
 /*===========================================================================*/
 
 UDPLink::UDPLink(SharedLinkConfigurationPtr &config, QObject *parent)
@@ -581,8 +503,9 @@ UDPLink::UDPLink(SharedLinkConfigurationPtr &config, QObject *parent)
 
 UDPLink::~UDPLink()
 {
-    if (_worker && _worker->isConnected()) {
+    if (isConnected()) {
         (void) QMetaObject::invokeMethod(_worker, "disconnectLink", Qt::BlockingQueuedConnection);
+        _onDisconnected();
     }
 
     _workerThread->quit();
@@ -595,7 +518,7 @@ UDPLink::~UDPLink()
 
 bool UDPLink::isConnected() const
 {
-    return _worker->isConnected();
+    return _worker && _worker->isConnected();
 }
 
 bool UDPLink::_connect()
@@ -612,12 +535,15 @@ void UDPLink::disconnect()
 
 void UDPLink::_onConnected()
 {
+    _disconnectedEmitted = false;
     emit connected();
 }
 
 void UDPLink::_onDisconnected()
 {
-    emit disconnected();
+    if (!_disconnectedEmitted.exchange(true)) {
+        emit disconnected();
+    }
 }
 
 void UDPLink::_onErrorOccurred(const QString &errorString)
@@ -643,5 +569,5 @@ void UDPLink::_writeBytes(const QByteArray& bytes)
 
 bool UDPLink::isSecureConnection() const
 {
-    return QGCDeviceInfo::isNetworkEthernet();
+    return QGCNetworkHelper::isNetworkEthernet();
 }

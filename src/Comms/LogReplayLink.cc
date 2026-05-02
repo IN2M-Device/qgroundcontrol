@@ -1,14 +1,6 @@
-/****************************************************************************
- *
- * (c) 2009-2024 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
- *
- * QGroundControl is licensed according to the terms in the file
- * COPYING.md in the root of the source code directory.
- *
- ****************************************************************************/
-
 #include "LogReplayLink.h"
 #include "LinkManager.h"
+#include "MAVLinkLib.h"
 #include "MAVLinkProtocol.h"
 #include "MultiVehicleManager.h"
 #include "QGCLoggingCategory.h"
@@ -25,28 +17,26 @@ QGC_LOGGING_CATEGORY(LogReplayLinkLog, "Comms.LogReplayLink")
 LogReplayConfiguration::LogReplayConfiguration(const QString &name, QObject *parent)
     : LinkConfiguration(name, parent)
 {
-    // qCDebug(LogReplayLinkLog) << Q_FUNC_INFO << this;
+    qCDebug(LogReplayLinkLog) << this;
 }
 
 LogReplayConfiguration::LogReplayConfiguration(const LogReplayConfiguration *copy, QObject *parent)
     : LinkConfiguration(copy, parent)
     , _logFilename(copy->logFilename())
 {
-    // qCDebug(LogReplayLinkLog) << Q_FUNC_INFO << this;
+    qCDebug(LogReplayLinkLog) << this;
 }
 
 LogReplayConfiguration::~LogReplayConfiguration()
 {
-    // qCDebug(LogReplayLinkLog) << Q_FUNC_INFO << this;
+    qCDebug(LogReplayLinkLog) << this;
 }
 
 void LogReplayConfiguration::copyFrom(const LinkConfiguration *source)
 {
-    Q_ASSERT(source);
     LinkConfiguration::copyFrom(source);
 
-    const LogReplayConfiguration *const logReplaySource = qobject_cast<const LogReplayConfiguration*>(source);
-    Q_ASSERT(logReplaySource);
+    const LogReplayConfiguration *logReplaySource = qobject_cast<const LogReplayConfiguration*>(source);
 
     setLogFilename(logReplaySource->logFilename());
 }
@@ -88,20 +78,21 @@ LogReplayWorker::LogReplayWorker(const LogReplayConfiguration *config, QObject *
     : QObject(parent)
     , _logReplayConfig(config)
 {
-    // qCDebug(LogReplayLinkLog) << Q_FUNC_INFO << this;
+    qCDebug(LogReplayLinkLog) << this;
 }
 
 LogReplayWorker::~LogReplayWorker()
 {
     disconnectFromLog();
 
-    // qCDebug(LogReplayLinkLog) << Q_FUNC_INFO << this;
+    qCDebug(LogReplayLinkLog) << this;
 }
 
 void LogReplayWorker::setup()
 {
-    Q_ASSERT(!_readTickTimer);
-    _readTickTimer = new QTimer(this);
+    if (!_readTickTimer) {
+        _readTickTimer = new QTimer(this);
+    }
 
     (void) connect(_readTickTimer, &QTimer::timeout, this, &LogReplayWorker::_readNextLogEntry);
 }
@@ -136,10 +127,18 @@ void LogReplayWorker::disconnectFromLog()
         return;
     }
 
+    qCDebug(LogReplayLinkLog) << "Disconnecting from log";
+
+    if (_readTickTimer) {
+        _readTickTimer->stop();
+    }
+
+    if (_logFile.isOpen()) {
+        _logFile.close();
+    }
+
     _isConnected = false;
     emit disconnected();
-
-    _readTickTimer->stop();
 }
 
 bool LogReplayWorker::isPlaying() const
@@ -380,7 +379,7 @@ quint64 LogReplayWorker::_findLastTimestamp()
 
     quint64 lastTimestamp = 0;
 
-    while (_logFile.bytesAvailable() > kTimestamp) {
+    while (_logFile.bytesAvailable() > static_cast<qint64>(kTimestamp)) {
         lastTimestamp = _parseTimestamp(_logFile.read(kTimestamp));
 
         bool endOfMessage = false;
@@ -429,8 +428,9 @@ LogReplayLink::LogReplayLink(SharedLinkConfigurationPtr &config, QObject *parent
 
 LogReplayLink::~LogReplayLink()
 {
-    if (_worker && _worker->isConnected()) {
+    if (isConnected()) {
         (void) QMetaObject::invokeMethod(_worker, "disconnectFromLog", Qt::BlockingQueuedConnection);
+        _onDisconnected();
     }
 
     _workerThread->quit();
@@ -439,6 +439,11 @@ LogReplayLink::~LogReplayLink()
     }
 
     qCDebug(LogReplayLinkLog) << this;
+}
+
+bool LogReplayLink::isConnected() const
+{
+    return _worker && _worker->isConnected();
 }
 
 bool LogReplayLink::_connect()
@@ -453,6 +458,19 @@ void LogReplayLink::disconnect()
     }
 }
 
+void LogReplayLink::_onConnected()
+{
+    _disconnectedEmitted = false;
+    emit connected();
+}
+
+void LogReplayLink::_onDisconnected()
+{
+    if (!_disconnectedEmitted.exchange(true)) {
+        emit disconnected();
+    }
+}
+
 void LogReplayLink::_onErrorOccurred(const QString &errorString)
 {
     qCWarning(LogReplayLinkLog) << "Error:" << errorString;
@@ -462,6 +480,11 @@ void LogReplayLink::_onErrorOccurred(const QString &errorString)
 void LogReplayLink::_onDataReceived(const QByteArray &data)
 {
     emit bytesReceived(this, data);
+}
+
+bool LogReplayLink::isPlaying() const
+{
+    return _worker && _worker->isPlaying();
 }
 
 void LogReplayLink::play()

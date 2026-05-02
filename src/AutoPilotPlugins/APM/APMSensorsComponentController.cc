@@ -1,20 +1,13 @@
-/****************************************************************************
- *
- * (c) 2009-2024 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
- *
- * QGroundControl is licensed according to the terms in the file
- * COPYING.md in the root of the source code directory.
- *
- ****************************************************************************/
-
 #include "APMSensorsComponentController.h"
 #include "APMAutoPilotPlugin.h"
 #include "APMSensorsComponent.h"
+#include "MAVLinkLib.h"
 #include "MAVLinkProtocol.h"
 #include "ParameterManager.h"
-#include "QGCApplication.h"
+#include "AppMessages.h"
 #include "QGCLoggingCategory.h"
 #include "Vehicle.h"
+#include "VehicleLinkManager.h"
 
 #include <QtCore/QVariant>
 
@@ -155,7 +148,7 @@ void APMSensorsComponentController::_stopCalibration(APMSensorsComponentControll
     default:
         // Assume failed
         _hideAllCalAreas();
-        qgcApp()->showAppMessage(tr("Calibration failed. Calibration log will be displayed."));
+        QGC::showAppMessage(tr("Calibration failed. Calibration log will be displayed."));
         break;
     }
 
@@ -361,7 +354,7 @@ void APMSensorsComponentController::calibrateGyro()
 
 void APMSensorsComponentController::_handleTextMessage(int sysid, int componentid, int severity, const QString &text, const QString &description)
 {
-    Q_UNUSED(severity); Q_UNUSED(description);
+    Q_UNUSED(componentid); Q_UNUSED(severity); Q_UNUSED(description);
 
     if (sysid != _vehicle->id()) {
         return;

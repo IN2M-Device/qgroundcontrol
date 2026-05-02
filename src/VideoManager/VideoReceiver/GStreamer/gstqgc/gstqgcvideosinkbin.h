@@ -1,12 +1,3 @@
-/****************************************************************************
- *
- * (c) 2009-2024 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
- *
- * QGroundControl is licensed according to the terms in the file
- * COPYING.md in the root of the source code directory.
- *
- ****************************************************************************/
-
 #pragma once
 
 #include <gst/gstbin.h>
@@ -21,6 +12,11 @@ struct _GstQgcVideoSinkBin
     GstBin parent;
     GstElement *glsinkbin;
     GstElement *qmlglsink;
+    GstElement *d3d11sink;
+    GstElement *appsink;
+    GstElement *videoconvert;
+    gboolean using_d3d11;
+    gboolean using_appsink;
 };
 
 G_END_DECLS

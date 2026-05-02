@@ -1,13 +1,5 @@
-/****************************************************************************
- *
- * (c) 2009-2024 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
- *
- * QGroundControl is licensed according to the terms in the file
- * COPYING.md in the root of the source code directory.
- *
- ****************************************************************************/
-
 #include "QGCMAVLink.h"
+#include "MAVLinkLib.h"
 #include "QGCLoggingCategory.h"
 
 QGC_LOGGING_CATEGORY(QGCMAVLinkLog, "MAVLink.QGCMAVLink")
@@ -76,9 +68,8 @@ QGCMAVLink::QGCMAVLink(QObject *parent)
     // qCDebug(StatusTextHandlerLog) << Q_FUNC_INFO << this;
 
    (void) qRegisterMetaType<mavlink_message_t>("mavlink_message_t");
-   (void) qRegisterMetaType<MAV_TYPE>("MAV_TYPE");
-   (void) qRegisterMetaType<MAV_AUTOPILOT>("MAV_AUTOPILOT");
-   (void) qRegisterMetaType<QGCMAVLink::GripperActions>("QGCMAVLink::GripperActions");
+   // Removes dependence on Q_ENUM_NS static-init order for queued connections.
+   (void) qRegisterMetaType<GRIPPER_ACTIONS>("GRIPPER_ACTIONS");
 }
 
 QGCMAVLink::~QGCMAVLink()

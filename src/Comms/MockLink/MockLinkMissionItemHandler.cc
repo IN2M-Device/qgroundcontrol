@@ -1,12 +1,3 @@
-/****************************************************************************
- *
- * (c) 2009-2024 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
- *
- * QGroundControl is licensed according to the terms in the file
- * COPYING.md in the root of the source code directory.
- *
- ****************************************************************************/
-
 #include "MockLinkMissionItemHandler.h"
 
 #include "MAVLinkProtocol.h"
@@ -36,7 +27,7 @@ void MockLinkMissionItemHandler::_startMissionItemResponseTimer()
     _missionItemResponseTimer.start(500);
 }
 
-bool MockLinkMissionItemHandler::handleMessage(const mavlink_message_t &msg)
+bool MockLinkMissionItemHandler::handleMavlinkMessage(const mavlink_message_t &msg)
 {
     switch (msg.msgid) {
     case MAVLINK_MSG_ID_MISSION_REQUEST_LIST:
@@ -105,6 +96,9 @@ void MockLinkMissionItemHandler::_handleMissionRequestList(const mavlink_message
 
     _failReadRequest1FirstResponse = true;
 
+    mavlink_mission_request_list_t request{};
+    mavlink_msg_mission_request_list_decode(&msg, &request);
+
     if (_failureMode == FailReadRequestListNoResponse) {
         qCDebug(MockLinkMissionItemHandlerLog) << "_handleMissionRequestList not responding due to failure mode FailReadRequestListNoResponse";
         return;
@@ -118,10 +112,8 @@ void MockLinkMissionItemHandler::_handleMissionRequestList(const mavlink_message
 
     _failReadRequestListFirstResponse = true;
 
-    mavlink_mission_request_list_t request{};
-    mavlink_msg_mission_request_list_decode(&msg, &request);
-
     Q_ASSERT(request.target_system == _mockLink->vehicleId());
+    _requestListCounts[static_cast<MAV_MISSION_TYPE>(request.mission_type)]++;
 
     _requestType = static_cast<MAV_MISSION_TYPE>(request.mission_type);
 

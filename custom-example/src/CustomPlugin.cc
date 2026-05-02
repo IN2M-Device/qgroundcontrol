@@ -1,19 +1,9 @@
-/****************************************************************************
- *
- * (c) 2009-2024 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
- *
- * QGroundControl is licensed according to the terms in the file
- * COPYING.md in the root of the source code directory.
- *
- ****************************************************************************/
-
 #include "CustomPlugin.h"
 #include "QmlComponentInfo.h"
 #include "QGCLoggingCategory.h"
 #include "QGCPalette.h"
 #include "QGCMAVLink.h"
 #include "AppSettings.h"
-#include "BrandImageSettings.h"
 
 #include <QtCore/QApplicationStatic>
 #include <QtQml/QQmlApplicationEngine>
@@ -83,31 +73,20 @@ void CustomPlugin::_addSettingsEntry(const QString &title, const char *qmlFile, 
     );
 }
 
-bool CustomPlugin::overrideSettingsGroupVisibility(const QString &name)
+void CustomPlugin::adjustSettingMetaData(const QString& settingsGroup, FactMetaData& metaData, bool &userVisible)
 {
-    // We have set up our own specific brand imaging.
-    // Hide the brand image settings such that the end user can't change it.
-    if (name == BrandImageSettings::name) {
-        return false;
-    }
-
-    return true;
-}
-
-void CustomPlugin::adjustSettingMetaData(const QString& settingsGroup, FactMetaData& metaData, bool &visible)
-{
-    QGCCorePlugin::adjustSettingMetaData(settingsGroup, metaData, visible);
+    QGCCorePlugin::adjustSettingMetaData(settingsGroup, metaData, userVisible);
 
     if (settingsGroup == AppSettings::settingsGroup) {
         // This tells QGC than when you are creating Plans while not connected to a vehicle
         // the specific firmware/vehicle the plan is for.
         if (metaData.name() == AppSettings::offlineEditingFirmwareClassName) {
             metaData.setRawDefaultValue(QGCMAVLink::FirmwareClassPX4);
-            visible = false;
+            userVisible = false;
             return;
         } else if (metaData.name() == AppSettings::offlineEditingVehicleClassName) {
             metaData.setRawDefaultValue(QGCMAVLink::VehicleClassMultiRotor);
-            visible = false;
+            userVisible = false;
             return;
         }
     }
@@ -296,9 +275,8 @@ CustomOverrideInterceptor::CustomOverrideInterceptor()
 QUrl CustomOverrideInterceptor::intercept(const QUrl &url, QQmlAbstractUrlInterceptor::DataType type)
 {
     switch (type) {
-    using DataType = QQmlAbstractUrlInterceptor::DataType;
-    case DataType::QmlFile:
-    case DataType::UrlString:
+    case QQmlAbstractUrlInterceptor::QmlFile:
+    case QQmlAbstractUrlInterceptor::UrlString:
         if (url.scheme() == QStringLiteral("qrc")) {
             const QString origPath = url.path();
             const QString overrideRes = QStringLiteral(":/Custom%1").arg(origPath);

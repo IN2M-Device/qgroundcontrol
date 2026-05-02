@@ -1,12 +1,3 @@
-/****************************************************************************
- *
- * (c) 2009-2020 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
- *
- * QGroundControl is licensed according to the terms in the file
- * COPYING.md in the root of the source code directory.
- *
- ****************************************************************************/
-
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -14,13 +5,16 @@ import QtQuick.Layouts
 import QGroundControl
 import QGroundControl.Controls
 
-
-
 ColumnLayout {
     spacing: _rowSpacing
 
     function saveSettings() {
-        // No Need
+        if (baudCombo.isCustomBaud) {
+            var baud = parseInt(customBaudField.text)
+            if (baud > 0) {
+                subEditConfig.baud = baud
+            }
+        }
     }
 
     GridLayout {
@@ -74,24 +68,47 @@ ColumnLayout {
         QGCComboBox {
             id:                     baudCombo
             Layout.preferredWidth:  _secondColumnWidth
-            model:                  QGroundControl.linkManager.serialBaudRates
+
+            readonly property string _customLabel:    qsTr("Custom")
+            readonly property bool   isCustomBaud:    currentText === _customLabel
 
             onActivated: (index) => {
-                if (index != -1) {
-                    subEditConfig.baud = parseInt(QGroundControl.linkManager.serialBaudRates[index])
+                if (index !== -1 && !isCustomBaud) {
+                    subEditConfig.baud = parseInt(currentText)
                 }
             }
 
             Component.onCompleted: {
-                var baud = "57600"
-                if(subEditConfig != null) {
-                    baud = subEditConfig.baud.toString()
-                }
+                var rates = QGroundControl.linkManager.serialBaudRates.slice()
+                rates.push(_customLabel)
+                model = rates
+
+                var baud = subEditConfig ? subEditConfig.baud.toString() : "57600"
                 var index = baudCombo.find(baud)
                 if (index === -1) {
-                    console.warn(qsTr("Baud rate name not in combo box"), baud)
+                    baudCombo.currentIndex = baudCombo.count - 1
+                    customBaudField.text = baud
                 } else {
                     baudCombo.currentIndex = index
+                }
+            }
+        }
+
+        QGCLabel {
+            text:    qsTr("Custom Baud Rate")
+            visible: baudCombo.isCustomBaud
+        }
+        QGCTextField {
+            id:                     customBaudField
+            Layout.preferredWidth:  _secondColumnWidth
+            visible:                baudCombo.isCustomBaud
+            numericValuesOnly:      true
+            validator:              IntValidator { bottom: 1 }
+            onEditingFinished: {
+                if (!baudCombo.isCustomBaud) return
+                var baud = parseInt(text)
+                if (baud > 0) {
+                    subEditConfig.baud = baud
                 }
             }
         }

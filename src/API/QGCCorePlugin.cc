@@ -1,24 +1,15 @@
-/****************************************************************************
- *
- * (c) 2009-2024 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
- *
- * QGroundControl is licensed according to the terms in the file
- * COPYING.md in the root of the source code directory.
- *
- ****************************************************************************/
-
 #include "QGCCorePlugin.h"
-#include "QGCLogging.h"
 #include "AppSettings.h"
 #include "MavlinkSettings.h"
 #include "FactMetaData.h"
+#include "QGCMAVLink.h"
 #ifdef QGC_GST_STREAMING
 #include "GStreamer.h"
 #endif
 #include "HorizontalFactValueGrid.h"
 #include "InstrumentValueData.h"
 #include "JoystickManager.h"
-#include "MAVLinkLib.h"
+#include "MAVLinkMessageType.h"
 #include "QGCLoggingCategory.h"
 #include "QGCOptions.h"
 #include "QmlComponentInfo.h"
@@ -35,7 +26,6 @@
 
 #include <QtCore/QApplicationStatic>
 #include <QtCore/QFile>
-#include <QtQml/qqml.h>
 #include <QtQml/QQmlApplicationEngine>
 #include <QtQml/QQmlContext>
 #include <QtQuick/QQuickItem>
@@ -72,29 +62,34 @@ const QVariantList &QGCCorePlugin::analyzePages()
 {
     static const QVariantList analyzeList = {
         QVariant::fromValue(new QmlComponentInfo(
-            tr("Log Download"),
-            QUrl::fromUserInput(QStringLiteral("qrc:/qml/QGroundControl/AnalyzeView/LogDownloadPage.qml")),
-            QUrl::fromUserInput(QStringLiteral("qrc:/qmlimages/LogDownloadIcon.svg")))),
-#if !defined(Q_OS_ANDROID) && !defined(Q_OS_IOS)
+            tr("Onboard Logs"),
+            QUrl::fromUserInput(QStringLiteral("qrc:/qml/QGroundControl/AnalyzeView/OnboardLogs/OnboardLogPage.qml")),
+            QUrl::fromUserInput(QStringLiteral("qrc:/qmlimages/OnboardLogIcon.svg")),
+            nullptr, true /* requiresVehicle */)),
+        QVariant::fromValue(new QmlComponentInfo(
+            tr("Onboard Logs (FTP)"),
+            QUrl::fromUserInput(QStringLiteral("qrc:/qml/QGroundControl/AnalyzeView/OnboardLogsFtp/OnboardLogFtpPage.qml")),
+            QUrl::fromUserInput(QStringLiteral("qrc:/qmlimages/OnboardLogIcon.svg")),
+            nullptr, true /* requiresVehicle */)),
         QVariant::fromValue(new QmlComponentInfo(
             tr("GeoTag Images"),
-            QUrl::fromUserInput(QStringLiteral("qrc:/qml/QGroundControl/AnalyzeView/GeoTagPage.qml")),
-            QUrl::fromUserInput(QStringLiteral("qrc:/qmlimages/GeoTagIcon.svg")))),
-#endif
+            QUrl::fromUserInput(QStringLiteral("qrc:/qml/QGroundControl/AnalyzeView/GeoTag/GeoTagPage.qml")),
+            QUrl::fromUserInput(QStringLiteral("qrc:/qml/QGroundControl/AnalyzeView/GeoTag/GeoTagIcon.svg")))),
         QVariant::fromValue(new QmlComponentInfo(
             tr("MAVLink Console"),
-            QUrl::fromUserInput(QStringLiteral("qrc:/qml/QGroundControl/AnalyzeView/MAVLinkConsolePage.qml")),
-            QUrl::fromUserInput(QStringLiteral("qrc:/qmlimages/MAVLinkConsoleIcon.svg")))),
-#ifndef QGC_DISABLE_MAVLINK_INSPECTOR
+            QUrl::fromUserInput(QStringLiteral("qrc:/qml/QGroundControl/AnalyzeView/MAVLinkConsole/MAVLinkConsolePage.qml")),
+            QUrl::fromUserInput(QStringLiteral("qrc:/qmlimages/MAVLinkConsoleIcon.svg")),
+            nullptr, true /* requiresVehicle */)),
         QVariant::fromValue(new QmlComponentInfo(
             tr("MAVLink Inspector"),
-            QUrl::fromUserInput(QStringLiteral("qrc:/qml/QGroundControl/AnalyzeView/MAVLinkInspectorPage.qml")),
-            QUrl::fromUserInput(QStringLiteral("qrc:/qmlimages/MAVLinkInspector.svg")))),
-#endif
+            QUrl::fromUserInput(QStringLiteral("qrc:/qml/QGroundControl/AnalyzeView/MAVLinkInspector/MAVLinkInspectorPage.qml")),
+            QUrl::fromUserInput(QStringLiteral("qrc:/qmlimages/MAVLinkInspector.svg")),
+            nullptr, true /* requiresVehicle */)),
         QVariant::fromValue(new QmlComponentInfo(
             tr("Vibration"),
-            QUrl::fromUserInput(QStringLiteral("qrc:/qml/QGroundControl/AnalyzeView/VibrationPage.qml")),
-            QUrl::fromUserInput(QStringLiteral("qrc:/qmlimages/VibrationPageIcon")))),
+            QUrl::fromUserInput(QStringLiteral("qrc:/qml/QGroundControl/AnalyzeView/Vibration/VibrationPage.qml")),
+            QUrl::fromUserInput(QStringLiteral("qrc:/qmlimages/VibrationPageIcon")),
+            nullptr, true /* requiresVehicle */)),
     };
 
     return analyzeList;
@@ -110,8 +105,12 @@ const QmlObjectListModel *QGCCorePlugin::customMapItems()
     return _emptyCustomMapItems;
 }
 
-void QGCCorePlugin::adjustSettingMetaData(const QString &settingsGroup, FactMetaData &metaData, bool &visible)
+void QGCCorePlugin::adjustSettingMetaData(const QString &settingsGroup, FactMetaData &metaData, bool &userVisible)
 {
+#ifdef Q_OS_ANDROID
+    Q_UNUSED(userVisible);
+#endif
+
     if (settingsGroup == AppSettings::settingsGroup) {
         if (metaData.name() == AppSettings::indoorPaletteName) {
             QVariant outdoorPalette;
@@ -131,7 +130,7 @@ void QGCCorePlugin::adjustSettingMetaData(const QString &settingsGroup, FactMeta
 #endif
 #ifndef Q_OS_ANDROID
         else if (metaData.name() == AppSettings::androidDontSaveToSDCardName) {
-            visible = false;
+            userVisible = false;
             return;
         }
 #endif
@@ -152,7 +151,7 @@ void QGCCorePlugin::factValueGridCreateDefaultSettings(FactValueGrid* factValueG
     FactValueGrid::FontSize defaultFontSize = FactValueGrid::DefaultFontSize;
 #else
     FactValueGrid::FontSize defaultFontSize = FactValueGrid::MediumFontSize;
-#endif    
+#endif
 
     if (factValueGrid->specificVehicleForCard()) {
         bool includeFWValues = factValueGrid->vehicleClass() == QGCMAVLink::VehicleClassFixedWing || factValueGrid->vehicleClass() == QGCMAVLink::VehicleClassVTOL || factValueGrid->vehicleClass() == QGCMAVLink::VehicleClassAirship;
@@ -265,7 +264,6 @@ QQmlApplicationEngine *QGCCorePlugin::createQmlApplicationEngine(QObject *parent
     QQmlApplicationEngine *const qmlEngine = new QQmlApplicationEngine(parent);
     qmlEngine->addImportPath(QStringLiteral("qrc:/qml"));
     qmlEngine->rootContext()->setContextProperty(QStringLiteral("joystickManager"), JoystickManager::instance());
-    qmlEngine->rootContext()->setContextProperty(QStringLiteral("debugMessageModel"), QGCLogging::instance());
     return qmlEngine;
 }
 
@@ -341,10 +339,8 @@ QVariantList QGCCorePlugin::firstRunPromptsToShow()
 QString QGCCorePlugin::firstRunPromptResource(int id) const
 {
     switch (id) {
-    case kUnitsFirstRunPromptId:
-        return QStringLiteral("/qml/QGroundControl/FirstRunPromptDialogs/UnitsFirstRunPrompt.qml");
-    case kOfflineVehicleFirstRunPromptId:
-        return QStringLiteral("/qml/QGroundControl/FirstRunPromptDialogs/OfflineVehicleFirstRunPrompt.qml");
+    case kInitialSetupPromptId:
+        return QStringLiteral("/qml/QGroundControl/FirstRunPromptDialogs/InitialSetupPrompt.qml");
     default:
         return QString();
     }

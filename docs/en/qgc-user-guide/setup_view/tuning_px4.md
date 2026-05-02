@@ -8,7 +8,7 @@ The tuning UI also supports manual tuning of all controllers.
 ![Tuning Setup > Autotune](../../../assets/setup/tuning/px4_autotune_hero.png)
 
 ::: info
-During [Airframe Setup](../config/airframe.md) you should have selected the frame that most closely matches your vehicle.
+During [Airframe Setup](airframe.md) you should have selected the frame that most closely matches your vehicle.
 This will usually be tuned well enough to fly, and it _may_ also be sufficiently well tuned to run autotuning.
 :::
 
@@ -56,7 +56,7 @@ Be ready to abort the autotuning process by moving the RC controller sticks.
 
 The test steps are:
 
-1. Perform the [pre-tuning test](#pre-tuning-test) above.
+1. Perform the [pre-autotuning test](#pre-autotuning-test) above.
 1. Takeoff using RC control and prepare for test:
    - **Multicopters:** Takeoff using the remote controller in **Altitude mode**.
      Hover the vehicle at a safe distance and at a few meters above ground (between 4 and 20m).

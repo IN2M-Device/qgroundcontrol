@@ -23,11 +23,20 @@ install(
 # Qt Deployment Script Generation
 # ----------------------------------------------------------------------------
 set(deploy_tool_options_arg "")
+set(deploy_include_plugins "")
 
 if(MACOS OR WIN32)
     list(APPEND deploy_tool_options_arg "-qmldir=${CMAKE_SOURCE_DIR}")
     if(MACOS)
         list(APPEND deploy_tool_options_arg "-appstore-compliant")
+    endif()
+endif()
+
+if(NOT ANDROID AND NOT IOS)
+    set(deploy_include_plugins INCLUDE_PLUGINS qoffscreen)
+    if(LINUX)
+        # Qt 6.10+ renamed wayland platform plugin to libqwayland.so
+        list(APPEND deploy_include_plugins qwayland)
     endif()
 endif()
 
@@ -38,10 +47,29 @@ qt_generate_deploy_qml_app_script(
     NO_UNSUPPORTED_PLATFORM_ERROR
     DEPLOY_USER_QML_MODULES_ON_UNSUPPORTED_PLATFORM
     DEPLOY_TOOL_OPTIONS ${deploy_tool_options_arg}
+    ${deploy_include_plugins}
 )
 
 install(SCRIPT ${deploy_script})
 message(STATUS "QGC: Qt deployment script: ${deploy_script}")
+
+# GStreamer framework rpath fixup: component dylibs (libgstrtsp, libgstvideo, etc.)
+# are inside the framework's lib/ directory, but the binary's @rpath resolves to
+# Contents/Frameworks/ (flat). Add the framework lib path so dyld finds them.
+# Runs after Qt deploy to survive any rpath rewriting by macdeployqt.
+if(MACOS AND GSTREAMER_FRAMEWORK)
+    install(CODE "
+        set(_binary \"\${CMAKE_INSTALL_PREFIX}/${CMAKE_PROJECT_NAME}.app/Contents/MacOS/${CMAKE_PROJECT_NAME}\")
+        if(EXISTS \"\${_binary}\")
+            execute_process(
+                COMMAND install_name_tool -add_rpath
+                    @executable_path/../Frameworks/GStreamer.framework/Versions/1.0/lib
+                    \"\${_binary}\"
+                ERROR_QUIET
+            )
+        endif()
+    ")
+endif()
 
 # ============================================================================
 # Platform-Specific Installation
@@ -87,16 +115,18 @@ elseif(LINUX)
         FILES "${CMAKE_BINARY_DIR}/${QGC_PACKAGE_NAME}.appdata.xml"
         DESTINATION "${CMAKE_INSTALL_DATADIR}/metainfo/"
     )
-    install(
-        FILES "${QGC_APPIMAGE_APPRUN_PATH}"
-        DESTINATION "${CMAKE_BINARY_DIR}/"
+    configure_file(
+        "${QGC_APPIMAGE_APPRUN_PATH}"
+        "${CMAKE_BINARY_DIR}/AppRun"
+        COPYONLY
     )
     # Pass variables to AppImage creation script
     install(CODE "
-        set(CMAKE_PROJECT_NAME ${CMAKE_PROJECT_NAME})
-        set(CMAKE_PROJECT_VERSION ${CMAKE_PROJECT_VERSION})
-        set(QGC_PACKAGE_NAME ${QGC_PACKAGE_NAME})
-        set(CMAKE_SYSTEM_PROCESSOR ${CMAKE_SYSTEM_PROCESSOR})
+        set(CMAKE_PROJECT_NAME \"${CMAKE_PROJECT_NAME}\")
+        set(CMAKE_PROJECT_VERSION \"${CMAKE_PROJECT_VERSION}\")
+        set(QGC_PACKAGE_NAME \"${QGC_PACKAGE_NAME}\")
+        set(QGC_BUILD_DIR \"${CMAKE_BINARY_DIR}\")
+        set(CMAKE_SYSTEM_PROCESSOR \"${CMAKE_SYSTEM_PROCESSOR}\")
     ")
     install(SCRIPT "${CMAKE_SOURCE_DIR}/cmake/install/CreateAppImage.cmake")
 
@@ -105,17 +135,18 @@ elseif(LINUX)
 # ----------------------------------------------------------------------------
 elseif(WIN32)
     # Pass variables to Windows installer creation script
+    if(CMAKE_CROSSCOMPILING)
+        set(_win_installer_out "${CMAKE_BINARY_DIR}/${CMAKE_PROJECT_NAME}-installer-${CMAKE_HOST_SYSTEM_PROCESSOR}-${CMAKE_SYSTEM_PROCESSOR}.exe")
+    else()
+        set(_win_installer_out "${CMAKE_BINARY_DIR}/${CMAKE_PROJECT_NAME}-installer-${CMAKE_SYSTEM_PROCESSOR}.exe")
+    endif()
     install(CODE "
-        set(CMAKE_PROJECT_NAME ${CMAKE_PROJECT_NAME})
-        set(CMAKE_PROJECT_VERSION ${CMAKE_PROJECT_VERSION})
-        set(QGC_ORG_NAME ${QGC_ORG_NAME})
+        set(CMAKE_PROJECT_NAME \"${CMAKE_PROJECT_NAME}\")
+        set(CMAKE_PROJECT_VERSION \"${CMAKE_PROJECT_VERSION}\")
+        set(QGC_ORG_NAME \"${QGC_ORG_NAME}\")
         set(QGC_WINDOWS_ICON_PATH \"${QGC_WINDOWS_ICON_PATH}\")
         set(QGC_WINDOWS_INSTALL_HEADER_PATH \"${QGC_WINDOWS_INSTALL_HEADER_PATH}\")
-        if(CMAKE_CROSSCOMPILING)
-            set(QGC_WINDOWS_OUT \"${CMAKE_BINARY_DIR}/${CMAKE_PROJECT_NAME}-installer-${CMAKE_HOST_SYSTEM_PROCESSOR}-${CMAKE_SYSTEM_PROCESSOR}.exe\")
-        else()
-            set(QGC_WINDOWS_OUT \"${CMAKE_BINARY_DIR}/${CMAKE_PROJECT_NAME}-installer-${CMAKE_SYSTEM_PROCESSOR}.exe\")
-        endif()
+        set(QGC_WINDOWS_OUT \"${_win_installer_out}\")
         set(QGC_WINDOWS_INSTALLER_SCRIPT \"${CMAKE_SOURCE_DIR}/deploy/windows/nullsoft_installer.nsi\")
     ")
     install(SCRIPT "${CMAKE_SOURCE_DIR}/cmake/install/CreateWinInstaller.cmake")
@@ -124,10 +155,18 @@ elseif(WIN32)
 # macOS Installation, Code Signing & DMG Creation
 # ----------------------------------------------------------------------------
 elseif(MACOS)
+    # macdeployqt ignores INCLUDE_PLUGINS — manually deploy offscreen plugin
+    if(TARGET Qt6::QOffscreenIntegrationPlugin)
+        install(FILES "$<TARGET_FILE:Qt6::QOffscreenIntegrationPlugin>"
+            DESTINATION "${CMAKE_PROJECT_NAME}.app/Contents/PlugIns/platforms"
+        )
+    endif()
+
     # Set bundle path for subsequent operations
     install(CODE "set(QGC_STAGING_BUNDLE_PATH \"${CMAKE_BINARY_DIR}/staging/${CMAKE_PROJECT_NAME}.app\")")
 
     # Code signing
+    option(QGC_MACOS_SIGN_WITH_IDENTITY "Sign macOS bundle with developer identity (requires signing env vars)" OFF)
     if(QGC_MACOS_SIGN_WITH_IDENTITY)
         message(STATUS "QGC: macOS bundle will be signed with developer identity")
         install(SCRIPT "${CMAKE_SOURCE_DIR}/cmake/install/SignMacBundle.cmake")
@@ -136,7 +175,11 @@ elseif(MACOS)
         install(CODE "
             message(STATUS \"QGC: Signing macOS bundle (ad-hoc)\")
             execute_process(
-                COMMAND codesign --force --deep -s - \"\${QGC_STAGING_BUNDLE_PATH}\"
+                COMMAND codesign --deep --force -s - \"\${QGC_STAGING_BUNDLE_PATH}\"
+                COMMAND_ERROR_IS_FATAL ANY
+            )
+            execute_process(
+                COMMAND codesign --verify --deep --verbose=2 \"\${QGC_STAGING_BUNDLE_PATH}\"
                 COMMAND_ERROR_IS_FATAL ANY
             )
         ")
@@ -149,7 +192,7 @@ elseif(MACOS)
         CPMAddPackage(
             NAME create-dmg
             GITHUB_REPOSITORY create-dmg/create-dmg
-            GIT_TAG master
+            GIT_TAG v1.2.3
             DOWNLOAD_ONLY
         )
         set(CREATE_DMG_PROGRAM "${create-dmg_SOURCE_DIR}/create-dmg")

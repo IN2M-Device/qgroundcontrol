@@ -1,20 +1,13 @@
-/****************************************************************************
- *
- * (c) 2009-2024 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
- *
- * QGroundControl is licensed according to the terms in the file
- * COPYING.md in the root of the source code directory.
- *
- ****************************************************************************/
-
 #include "AudioOutput.h"
 #include "Fact.h"
+#include "AppMessages.h"
 #include "QGCLoggingCategory.h"
-#include "QGCApplication.h"
 
 #include <QtCore/QRegularExpression>
 #include <QtCore/QApplicationStatic>
 #include <QtTextToSpeech/QTextToSpeech>
+
+#include <algorithm>
 
 QGC_LOGGING_CATEGORY(AudioOutputLog, "Utilities.AudioOutput");
 // qt.speech.tts.flite
@@ -60,8 +53,9 @@ AudioOutput *AudioOutput::instance()
     return _audioOutput();
 }
 
-void AudioOutput::init(Fact *mutedFact)
+void AudioOutput::init(Fact* volumeFact, Fact* mutedFact)
 {
+    Q_CHECK_PTR(volumeFact);
     Q_CHECK_PTR(mutedFact);
 
     if (_initialized) {
@@ -93,12 +87,19 @@ void AudioOutput::init(Fact *mutedFact)
         qCDebug(AudioOutputLog) << "Queue Size:" << _textQueueSize;
     });
 
-    (void) connect(mutedFact, &Fact::valueChanged, this, [this](QVariant value) {
-        setMuted(value.toBool());
+    _volumeFact = volumeFact;
+    _mutedFact = mutedFact;
+
+    (void) connect(_volumeFact, &Fact::valueChanged, this, [this]() {
+        _setVolume();
+    });
+
+    (void) connect(_mutedFact, &Fact::valueChanged, this, [this]() {
+        _setVolume();
     });
 
     if (AudioOutputLog().isDebugEnabled()) {
-        (void) connect(_engine, &QTextToSpeech::stateChanged, this, [this](QTextToSpeech::State state) {
+        (void) connect(_engine, &QTextToSpeech::stateChanged, this, [](QTextToSpeech::State state) {
             qCDebug(AudioOutputLog) << "TTS State changed to:" << state;
         });
         (void) connect(_engine, &QTextToSpeech::errorOccurred, this, [](QTextToSpeech::ErrorReason reason, const QString &errorString) {
@@ -115,30 +116,55 @@ void AudioOutput::init(Fact *mutedFact)
         });
     }
 
-    setMuted(mutedFact->rawValue().toBool());
     _initialized = true;
+    _setVolume();
 
-    qCDebug(AudioOutputLog) << "AudioOutput initialized with muted state:" << _muted;
+    qCDebug(AudioOutputLog) << "AudioOutput initialized with volume:" << _volumeSetting() << "%";
 }
 
-void AudioOutput::setMuted(bool muted)
+double AudioOutput::_volumeSetting() const
 {
-    if (_muted.exchange(muted) != muted) {
-        (void) QMetaObject::invokeMethod(_engine, "setVolume", Qt::AutoConnection, muted ? 0.0 : 1.0);
-        qCDebug(AudioOutputLog) << "AudioOutput muted state set to:" << muted;
+    return std::clamp(_volumeFact->rawValue().toDouble(), 0.0, 100.0);
+}
+
+bool AudioOutput::_mutedSetting() const
+{
+    return _mutedFact->rawValue().toBool();
+}
+
+void AudioOutput::_setVolume()
+{
+    const bool muted = _mutedSetting();
+    const double volume = muted ? 0.0 : _volumeSetting();
+
+    // qFuzzyCompare fails near zero; adding 1.0 shifts values into a safe range
+    if (qFuzzyCompare(1.0 + volume, 1.0 + _lastVolume)) {
+        return;
     }
+    _lastVolume = volume;
+
+    if (volume == 0.0) {
+        // Prevent any queued text from being spoken once muted
+        (void) QMetaObject::invokeMethod(_engine, "stop", Qt::AutoConnection, QTextToSpeech::BoundaryHint::Default);
+        _textQueueSize = 0;
+    }
+
+    // Must normalize volume to 0.0 - 1.0 for QTextToSpeech
+    const double normalizedVolume = volume / 100.0;
+    (void) QMetaObject::invokeMethod(_engine, "setVolume", Qt::AutoConnection, normalizedVolume);
+    qCDebug(AudioOutputLog) << "AudioOutput volume set to:" << volume << "%";
 }
 
 void AudioOutput::say(const QString &text, TextMods textMods)
 {
     if (!_initialized) {
-        if (!qgcApp()->runningUnitTests()) {
+        if (!QGC::runningUnitTests()) {
             qCWarning(AudioOutputLog) << "AudioOutput not initialized. Call init() before using say().";
         }
         return;
     }
 
-    if (_muted) {
+    if (_volumeSetting() <= 0.0 || _mutedSetting()) {
         return;
     }
 
@@ -168,6 +194,20 @@ void AudioOutput::say(const QString &text, TextMods textMods)
     } else {
         qCWarning(AudioOutputLog) << "Failed to invoke Enqueue method.";
     }
+}
+
+void AudioOutput::testAudioOutput()
+{
+    if (!_initialized) {
+        qCWarning(AudioOutputLog) << "AudioOutput not initialized. Call init() before using testAudioOutput().";
+        return;
+    }
+
+    (void) QMetaObject::invokeMethod(_engine, "stop", Qt::AutoConnection, QTextToSpeech::BoundaryHint::Default);
+    _textQueueSize = 0;
+
+    const QString testText = tr("Audio test. Volume is %1 percent").arg(_volumeSetting(), 0, 'f', 1);
+    say(testText);
 }
 
 QString AudioOutput::_fixTextMessageForAudio(const QString &string)

@@ -1,13 +1,6 @@
-/****************************************************************************
- *
- * (c) 2009-2024 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
- *
- * QGroundControl is licensed according to the terms in the file
- * COPYING.md in the root of the source code directory.
- *
- ****************************************************************************/
-
+#include "JsonParsing.h"
 #include "QGCApplication.h"
+#include "qgc_version.h"
 
 #include <QtCore/QEvent>
 #include <QtCore/QFile>
@@ -16,20 +9,22 @@
 #include <QtCore/QRegularExpression>
 #include <QtGui/QFontDatabase>
 #include <QtGui/QIcon>
-#include <QtNetwork/QNetworkProxyFactory>
+#include <QtGui/QOpenGLContext>
+#include "QGCNetworkHelper.h"
 #include <QtQml/QQmlApplicationEngine>
 #include <QtQml/QQmlContext>
 #include <QtQuick/QQuickImageProvider>
 #include <QtQuick/QQuickWindow>
 #include <QtQuickControls2/QQuickStyle>
+#include <QtSvg/QSvgRenderer>
 
 #include <QtCore/private/qthread_p.h>
 
-#include "QGCLogging.h"
+#include "LogManager.h"
+#include "LogRemoteSink.h"
 #include "AudioOutput.h"
 #include "FollowMe.h"
 #include "JoystickManager.h"
-#include "JsonHelper.h"
 #include "LinkManager.h"
 #include "MAVLinkProtocol.h"
 #include "MultiVehicleManager.h"
@@ -38,8 +33,10 @@
 #include "QGCCommandLineParser.h"
 #include "QGCCorePlugin.h"
 #include "QGCFileDownload.h"
+#include "ColoredSvgImageProvider.h"
 #include "QGCImageProvider.h"
 #include "QGCLoggingCategory.h"
+#include "QGCLoggingCategoryManager.h"
 #include "SettingsManager.h"
 #include "MavlinkSettings.h"
 #include "AppSettings.h"
@@ -55,7 +52,7 @@
 QGC_LOGGING_CATEGORY(QGCApplicationLog, "API.QGCApplication")
 
 QGCApplication::QGCApplication(int &argc, char *argv[], const QGCCommandLineParser::CommandLineParseResult &cli)
-    : QApplication(argc, argv)
+    : QGuiApplication(argc, argv)
     , _runningUnitTests(cli.runningUnitTests)
     , _simpleBootTest(cli.simpleBootTest)
     , _fakeMobile(cli.fakeMobile)
@@ -65,7 +62,7 @@ QGCApplication::QGCApplication(int &argc, char *argv[], const QGCCommandLinePars
     _msecsElapsedTime.start();
 
     // Setup for network proxy support
-    QNetworkProxyFactory::setUseSystemConfiguration(true);
+    QGCNetworkHelper::initializeProxySupport();
 
     bool fClearSettingsOptions = cli.clearSettingsOptions;  // Clear stored settings
     const bool fClearCache = cli.clearCache;                // Clear parameter/airframe caches
@@ -81,7 +78,12 @@ QGCApplication::QGCApplication(int &argc, char *argv[], const QGCCommandLinePars
     if (_runningUnitTests || _simpleBootTest) {
         // We don't want unit tests to use the same QSettings space as the normal app. So we tweak the app
         // name. Also we want to run unit tests with clean settings every time.
-        applicationName = QStringLiteral("%1_unittest").arg(QGC_APP_NAME);
+        // Include test name or PID to prevent settings file conflicts when tests run in parallel
+        if (!cli.unitTests.isEmpty()) {
+            applicationName = QStringLiteral("%1_unittest_%2").arg(QGC_APP_NAME, cli.unitTests.first());
+        } else {
+            applicationName = QStringLiteral("%1_unittest_%2").arg(QGC_APP_NAME).arg(QCoreApplication::applicationPid());
+        }
     } else {
 #ifdef QGC_DAILY_BUILD
         // This gives daily builds their own separate settings space. Allowing you to use daily and stable builds
@@ -92,6 +94,7 @@ QGCApplication::QGCApplication(int &argc, char *argv[], const QGCCommandLinePars
 #endif
     }
     setApplicationName(applicationName);
+    setDesktopFileName(QGC_PACKAGE_NAME);
     setOrganizationName(QGC_ORG_NAME);
     setOrganizationDomain(QGC_ORG_DOMAIN);
     setApplicationVersion(QString(QGC_APP_VERSION_STR));
@@ -106,7 +109,7 @@ QGCApplication::QGCApplication(int &argc, char *argv[], const QGCCommandLinePars
     }
 
     // The setting will delete all settings on this boot
-    fClearSettingsOptions |= settings.contains(_deleteAllSettingsKey);
+    fClearSettingsOptions |= settings.value(AppSettings::clearSettingsNextBootKey, false).toBool();
 
     if (_runningUnitTests || _simpleBootTest) {
         // Unit tests run with clean settings
@@ -136,17 +139,26 @@ QGCApplication::QGCApplication(int &argc, char *argv[], const QGCCommandLinePars
     if (fClearCache) {
         QDir dir(ParameterManager::parameterCacheDir());
         dir.removeRecursively();
-        QFile airframe(cachedAirframeMetaDataFile());
-        airframe.remove();
         QFile parameter(cachedParameterMetaDataFile());
         parameter.remove();
+        QFile airframe(cachedAirframeMetaDataFile());
+        airframe.remove();
+
+        // Clear versioned parameter metadata cache
+        const QString metaDataCachePath = QStandardPaths::writableLocation(QStandardPaths::CacheLocation)
+                                          + QStringLiteral("/ParameterMetaData");
+        QDir(metaDataCachePath).removeRecursively();
     }
 
     // Set up our logging filters
-    QGCLoggingCategoryManager::instance()->setFilterRulesFromSettings(loggingOptions);
+    QGCLoggingCategoryManager::init();
+    QGCLoggingCategoryManager::instance()->installFilter(loggingOptions);
 
     // We need to set language as early as possible prior to loading on JSON files.
     setLanguage();
+
+    // Force old SVG Tiny 1.2 behavior for compatibility
+    QSvgRenderer::setDefaultOptions(QtSvg::Tiny12FeaturesOnly);
 
 #ifndef QGC_DAILY_BUILD
     _checkForNewVersion();
@@ -173,7 +185,7 @@ void QGCApplication::setLanguage()
         }
     }
     qCDebug(QGCApplicationLog) << "Loading localizations for" << _locale.name();
-    removeTranslator(JsonHelper::translator());
+    removeTranslator(JsonParsing::translator());
     removeTranslator(&_qgcTranslatorSourceCode);
     removeTranslator(&_qgcTranslatorQtLibs);
     if (_locale.name() != "en_US") {
@@ -188,8 +200,8 @@ void QGCApplication::setLanguage()
         } else {
             qCWarning(QGCApplicationLog) << "Error loading source localization for" << _locale.name();
         }
-        if (JsonHelper::translator()->load(_locale, QLatin1String("qgc_json_"), "", ":/i18n")) {
-            installTranslator(JsonHelper::translator());
+        if (JsonParsing::translator()->load(_locale, QLatin1String("qgc_json_"), "", ":/i18n")) {
+            installTranslator(JsonParsing::translator());
         } else {
             qCWarning(QGCApplicationLog) << "Error loading json localization for" << _locale.name();
         }
@@ -215,6 +227,45 @@ void QGCApplication::init()
         SettingsManager::instance()->mavlinkSettings()->gcsMavlinkSystemID()->setRawValue(_systemId);
     }
 
+    // Set up log directory for disk logging and SQLite store, and re-apply on path change
+    {
+        auto *logMgr = LogManager::instance();
+        auto *appSettings = SettingsManager::instance()->appSettings();
+        logMgr->setLogDirectory(appSettings->logSavePath());
+        QObject::connect(appSettings, &AppSettings::savePathsChanged, logMgr, [logMgr, appSettings]() {
+            logMgr->setLogDirectory(appSettings->logSavePath());
+        });
+    }
+
+    // Wire remote logging settings to the sink
+    {
+        auto *appSettings = SettingsManager::instance()->appSettings();
+        auto *sink = LogManager::instance()->remoteSink();
+        auto applySetting = [appSettings, sink]() {
+            sink->setHost(appSettings->remoteLoggingHost()->rawValue().toString());
+            sink->setPort(static_cast<quint16>(appSettings->remoteLoggingPort()->rawValue().toUInt()));
+            sink->setProtocol(static_cast<TransportStrategy::Protocol>(
+                appSettings->remoteLoggingProtocol()->rawValue().toInt()));
+            sink->setVehicleId(appSettings->remoteLoggingVehicleId()->rawValue().toString());
+            sink->setTlsEnabled(appSettings->remoteLoggingTlsEnabled()->rawValue().toBool());
+            sink->setTlsVerifyPeer(appSettings->remoteLoggingTlsVerifyPeer()->rawValue().toBool());
+            sink->setCompressionEnabled(appSettings->remoteLoggingCompressionEnabled()->rawValue().toBool());
+            sink->setCompressionLevel(appSettings->remoteLoggingCompressionLevel()->rawValue().toInt());
+            sink->setEnabled(appSettings->remoteLoggingEnabled()->rawValue().toBool());
+        };
+        for (auto *fact : {
+                 appSettings->remoteLoggingEnabled(),    appSettings->remoteLoggingHost(),
+                 appSettings->remoteLoggingPort(),       appSettings->remoteLoggingProtocol(),
+                 appSettings->remoteLoggingVehicleId(),  appSettings->remoteLoggingTlsEnabled(),
+                 appSettings->remoteLoggingTlsVerifyPeer(),
+                 appSettings->remoteLoggingCompressionEnabled(),
+                 appSettings->remoteLoggingCompressionLevel(),
+             }) {
+            QObject::connect(fact, &Fact::rawValueChanged, sink, applySetting);
+        }
+        applySetting();
+    }
+
     // Although this should really be in _initForNormalAppBoot putting it here allowws us to create unit tests which pop up more easily
     if (QFontDatabase::addApplicationFont(":/fonts/opensans") < 0) {
         qCWarning(QGCApplicationLog) << "Could not load /fonts/opensans font";
@@ -227,27 +278,69 @@ void QGCApplication::init()
     if (_simpleBootTest) {
         // Since GStream builds are so problematic we initialize video during the simple boot test
         // to make sure it works and verfies plugin availability.
-        _initVideo();
+        _bootTestPassed = _initVideo();
     } else if (!_runningUnitTests) {
         _initForNormalAppBoot();
     }
 }
 
-void QGCApplication::_initVideo()
+bool QGCApplication::_initVideo()
 {
 #ifdef QGC_GST_STREAMING
-    // Gstreamer video playback requires OpenGL
-    QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);
+    // GStreamer video rendering backend selection:
+    //  - Windows D3D11: native RHI, no OpenGL needed.
+    //  - macOS: appsink → QVideoSink → Metal RHI VideoOutput, no OpenGL needed.
+    //  - Linux/other: qml6glsink requires OpenGL. Probe for a working GL context
+    //    and fall back to the default graphics API if unavailable.
+    //
+    // The offscreen platform (used in CI boot tests) never provides a real
+    // GL context, so skip the probe there — just set OpenGL API to exercise
+    // the full GStreamer init path.
+    const bool isOffscreen = (qApp->platformName() == QLatin1String("offscreen"));
+
+#if defined(QGC_GST_D3D11_SINK)
+    // D3D11 sink renders via Qt's native D3D11 RHI — no OpenGL needed.
+    if (isOffscreen) {
+        QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);
+    }
+    qCDebug(QGCApplicationLog) << "D3D11 video sink available, using default graphics API";
+#elif defined(Q_OS_MACOS)
+    // macOS Metal rendering path: appsink → QVideoSink → VideoOutput.
+    // Do NOT force OpenGL — let Qt use the default Metal RHI backend.
+    // The appsink path in qgcvideosinkbin avoids the GL-dependent qml6glsink.
+    if (isOffscreen) {
+        QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);
+    } else {
+        qCDebug(QGCApplicationLog) << "macOS: using default RHI backend (Metal) for appsink video path";
+    }
+#else
+    const bool skipGLProbe = isOffscreen;
+
+    if (skipGLProbe) {
+        QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);
+    } else {
+        QOpenGLContext testCtx;
+        if (testCtx.create()) {
+            QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);
+        } else {
+            qCWarning(QGCApplicationLog) << "OpenGL not available; GStreamer video will be disabled."
+                                         << "Using default graphics API (Metal/Vulkan).";
+        }
+    }
+#endif  // QGC_GST_D3D11_SINK / Q_OS_MACOS
 #endif
 
     QGCCorePlugin::instance();  // CorePlugin must be initialized before VideoManager for Video Cleanup
-    VideoManager::instance();
+    VideoManager *videoManager = VideoManager::instance();
+    videoManager->startGStreamerInit();
+    const bool initSucceeded = !_simpleBootTest || videoManager->waitForGStreamerInit();
     _videoManagerInitialized = true;
+    return initSucceeded;
 }
 
 void QGCApplication::_initForNormalAppBoot()
 {
-    _initVideo(); // GStreamer must be initialized before QmlEngine
+    (void) _initVideo();
 
     QQuickStyle::setStyle("Basic");
     QGCCorePlugin::instance()->init();
@@ -255,16 +348,18 @@ void QGCApplication::_initForNormalAppBoot()
     MultiVehicleManager::instance()->init();
     _qmlAppEngine = QGCCorePlugin::instance()->createQmlApplicationEngine(this);
     QObject::connect(_qmlAppEngine, &QQmlApplicationEngine::objectCreationFailed, this, QCoreApplication::quit, Qt::QueuedConnection);
+
+    // Must register before createRootWindow — root QML references QGCColoredImage which resolves image://coloredsvg/... at load time.
+    _qmlAppEngine->addImageProvider(_qgcImageProviderId, new QGCImageProvider());
+    _qmlAppEngine->addImageProvider(QLatin1String(ColoredSvgImageProvider::ProviderId), new ColoredSvgImageProvider());
+
     QGCCorePlugin::instance()->createRootWindow(_qmlAppEngine);
 
-    AudioOutput::instance()->init(SettingsManager::instance()->appSettings()->audioMuted());
+    AudioOutput::instance()->init(SettingsManager::instance()->appSettings()->audioVolume(), SettingsManager::instance()->appSettings()->audioMuted());
     FollowMe::instance()->init();
     QGCPositionManager::instance()->init();
     LinkManager::instance()->init();
     VideoManager::instance()->init(mainRootWindow());
-
-    // Image provider for Optical Flow
-    _qmlAppEngine->addImageProvider(_qgcImageProviderId, new QGCImageProvider());
 
     // Set the window icon now that custom plugin has a chance to override it
 #ifdef Q_OS_LINUX
@@ -320,18 +415,6 @@ void QGCApplication::_initForNormalAppBoot()
 
     // Connect links with flag AutoconnectLink
     LinkManager::instance()->startAutoConnectedLinks();
-}
-
-void QGCApplication::deleteAllSettingsNextBoot()
-{
-    QSettings settings;
-    settings.setValue(_deleteAllSettingsKey, true);
-}
-
-void QGCApplication::clearDeleteAllSettingsNextBoot()
-{
-    QSettings settings;
-    settings.remove(_deleteAllSettingsKey);
 }
 
 void QGCApplication::reportMissingParameter(int componentId, const QString &name)
@@ -478,16 +561,17 @@ void QGCApplication::_checkForNewVersion()
     const QString versionCheckFile = QGCCorePlugin::instance()->stableVersionCheckFileUrl();
     if (!versionCheckFile.isEmpty()) {
         QGCFileDownload *const download = new QGCFileDownload(this);
-        (void) connect(download, &QGCFileDownload::downloadComplete, this, &QGCApplication::_qgcCurrentStableVersionDownloadComplete);
-        download->download(versionCheckFile);
+        (void) connect(download, &QGCFileDownload::finished, this, &QGCApplication::_qgcCurrentStableVersionDownloadComplete);
+        if (!download->start(versionCheckFile)) {
+            qCDebug(QGCApplicationLog) << "Download QGC stable version failed to start" << download->errorString();
+            download->deleteLater();
+        }
     }
 }
 
-void QGCApplication::_qgcCurrentStableVersionDownloadComplete(const QString &remoteFile, const QString &localFile, const QString &errorMsg)
+void QGCApplication::_qgcCurrentStableVersionDownloadComplete(bool success, const QString &localFile, const QString &errorMsg)
 {
-    Q_UNUSED(remoteFile);
-
-    if (errorMsg.isEmpty()) {
+    if (success) {
         QFile versionFile(localFile);
         if (versionFile.open(QIODevice::ReadOnly)) {
             QTextStream textStream(&versionFile);
@@ -504,7 +588,7 @@ void QGCApplication::_qgcCurrentStableVersionDownloadComplete(const QString &rem
                 }
             }
         }
-    } else {
+    } else if (!errorMsg.isEmpty()) {
         qCDebug(QGCApplicationLog) << "Download QGC stable version failed" << errorMsg;
     }
 
@@ -529,7 +613,7 @@ QString QGCApplication::cachedParameterMetaDataFile()
 {
     QSettings settings;
     const QDir parameterDir = QFileInfo(settings.fileName()).dir();
-    return parameterDir.filePath(QStringLiteral("ParameterFactMetaData.xml"));
+    return parameterDir.filePath(QStringLiteral("ParameterFactMetaData.json"));
 }
 
 QString QGCApplication::cachedAirframeMetaDataFile()
@@ -596,15 +680,17 @@ void QGCApplication::removeCompressedSignal(const QMetaMethod &method)
     _compressedSignals.remove(method);
 }
 
+QT_WARNING_PUSH
+QT_WARNING_DISABLE_DEPRECATED
 bool QGCApplication::compressEvent(QEvent *event, QObject *receiver, QPostEventList *postedEvents)
 {
     if (event->type() != QEvent::MetaCall) {
-        return QApplication::compressEvent(event, receiver, postedEvents);
+        return QGuiApplication::compressEvent(event, receiver, postedEvents);
     }
 
     const QMetaCallEvent *mce = static_cast<QMetaCallEvent*>(event);
     if (!mce->sender() || !_compressedSignals.contains(mce->sender()->metaObject(), mce->signalId())) {
-        return QApplication::compressEvent(event, receiver, postedEvents);
+        return QGuiApplication::compressEvent(event, receiver, postedEvents);
     }
 
     for (QPostEventList::iterator it = postedEvents->begin(); it != postedEvents->end(); ++it) {
@@ -634,10 +720,14 @@ bool QGCApplication::compressEvent(QEvent *event, QObject *receiver, QPostEventL
 
     return false;
 }
+QT_WARNING_POP
 
 bool QGCApplication::event(QEvent *e)
 {
     if (e->type() == QEvent::Quit) {
+        if (!_mainRootWindow) {
+            return QGuiApplication::event(e);
+        }
         // On OSX if the user selects Quit from the menu (or Command-Q) the ApplicationWindow does not signal closing. Instead you get a Quit event here only.
         // This in turn causes the standard QGC shutdown sequence to not run. So in this case we close the window ourselves such that the
         // signal is sent and the normal shutdown sequence runs.
@@ -654,7 +744,7 @@ bool QGCApplication::event(QEvent *e)
         }
     }
 
-    return QApplication::event(e);
+    return QGuiApplication::event(e);
 }
 
 QGCImageProvider *QGCApplication::qgcImageProvider()
@@ -672,43 +762,38 @@ void QGCApplication::shutdown()
 
     QGCCorePlugin::instance()->cleanup();
 
+    if (_runningUnitTests || _simpleBootTest) {
+        const QSettings settings;
+        const QString settingsFile = settings.fileName();
+        if (QFile::exists(settingsFile)) {
+            if (QFile::remove(settingsFile)) {
+                qCDebug(QGCApplicationLog) << "Removed test run settings file:" << settingsFile;
+            } else {
+                qCWarning(QGCApplicationLog) << "Failed to remove test run settings file:" << settingsFile;
+            }
+        }
+
+        // Remove the app-specific settings directory (parent of ParamCache)
+        QDir settingsAppDir(ParameterManager::parameterCacheDir());
+        settingsAppDir.cdUp();
+        if (settingsAppDir.exists()) {
+            if (settingsAppDir.removeRecursively()) {
+                qCDebug(QGCApplicationLog) << "Removed test run settings directory:" << settingsAppDir.absolutePath();
+            } else {
+                qCWarning(QGCApplicationLog) << "Failed to remove test run settings directory:" << settingsAppDir.absolutePath();
+            }
+        }
+
+        QDir appDir(SettingsManager::instance()->appSettings()->savePath()->rawValue().toString());
+        if (appDir.exists()) {
+            if (appDir.removeRecursively()) {
+                qCDebug(QGCApplicationLog) << "Removed test run app data directory:" << appDir.absolutePath();
+            } else {
+                qCWarning(QGCApplicationLog) << "Failed to remove test run app data directory:" << appDir.absolutePath();
+            }
+        }
+    }
+
     // This is bad, but currently qobject inheritances are incorrect and cause crashes on exit without
     delete _qmlAppEngine;
-}
-
-QString QGCApplication::numberToString(quint64 number)
-{
-    return getCurrentLanguage().toString(number);
-}
-
-QString QGCApplication::bigSizeToString(quint64 size)
-{
-    QString result;
-    const QLocale kLocale = getCurrentLanguage();
-    if (size < 1024) {
-        result = kLocale.toString(size) + "B";
-    } else if (size < pow(1024, 2)) {
-        result = kLocale.toString(static_cast<double>(size) / 1024.0, 'f', 1) + "KB";
-    } else if (size < pow(1024, 3)) {
-        result = kLocale.toString(static_cast<double>(size) / pow(1024, 2), 'f', 1) + "MB";
-    } else if (size < pow(1024, 4)) {
-        result = kLocale.toString(static_cast<double>(size) / pow(1024, 3), 'f', 1) + "GB";
-    } else {
-        result = kLocale.toString(static_cast<double>(size) / pow(1024, 4), 'f', 1) + "TB";
-    }
-    return result;
-}
-
-QString QGCApplication::bigSizeMBToString(quint64 size_MB)
-{
-    QString result;
-    const QLocale kLocale = getCurrentLanguage();
-    if (size_MB < 1024) {
-        result = kLocale.toString(static_cast<double>(size_MB) , 'f', 0) + " MB";
-    } else if(size_MB < pow(1024, 2)) {
-        result = kLocale.toString(static_cast<double>(size_MB) / 1024.0, 'f', 1) + " GB";
-    } else {
-        result = kLocale.toString(static_cast<double>(size_MB) / pow(1024, 2), 'f', 2) + " TB";
-    }
-    return result;
 }

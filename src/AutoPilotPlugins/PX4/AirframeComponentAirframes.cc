@@ -1,16 +1,3 @@
-/****************************************************************************
- *
- * (c) 2009-2024 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
- *
- * QGroundControl is licensed according to the terms in the file
- * COPYING.md in the root of the source code directory.
- *
- ****************************************************************************/
-
-
-/// @file
-///     @author Don Gagne <don@thegagnes.com>
-
 #include "AirframeComponentAirframes.h"
 #include <QtCore/QFile>
 
@@ -24,7 +11,7 @@ QMap<QString, AirframeComponentAirframes::AirframeType_t*>& AirframeComponentAir
         // Standard planes
         AirframeType_t *standardPlane = new AirframeType_t;
         standardPlane->name = "Standard Airplane";
-        standardPlane->imageResource = "qrc:/qmlimages/AirframeStandardPlane.svg";
+        standardPlane->imageResource = "qrc:/qmlimages/Airframe/Plane.svg";
         AirframeInfo_t *easystar = new AirframeInfo_t;
         easystar->name = "Multiplex Easystar 1/2";
         easystar->autostartId = 2100;

@@ -1,19 +1,9 @@
-/****************************************************************************
- *
- * (c) 2009-2024 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
- *
- * QGroundControl is licensed according to the terms in the file
- * COPYING.md in the root of the source code directory.
- *
- ****************************************************************************/
-
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
 import QGroundControl
 import QGroundControl.Controls
-
 import QGroundControl.FactControls
 
 Item {
@@ -29,7 +19,7 @@ Item {
     property var    gimbals:                    gimbalController.gimbals
     property var    activeGimbal:               gimbalController.activeGimbal
     property var    multiGimbalSetup:           gimbalController.gimbals.count > 1
-    property bool   joystickButtonsAvailable:   activeVehicle.joystickEnabled
+    property bool   joystickButtonsAvailable:   activeVehicle ? joystickManager.activeJoystickEnabledForActiveVehicle : false
     property bool   showAzimuth:                QGroundControl.settingsManager.gimbalControllerSettings.toolbarIndicatorShowAzimuth.rawValue
 
     property var    margins:                    ScreenTools.defaultFontPixelWidth
@@ -59,10 +49,10 @@ Item {
                 anchors.horizontalCenter: parent.horizontalCenter
                 width:                   height
                 height:                  multiGimbalSetup ? parent.height - gimbalIdLabel.contentHeight : parent.height
-                source:                  "/gimbal/payload.png"
+                source:                  "/res/CameraGimbal.png"
                 fillMode:                Image.PreserveAspectFit
                 sourceSize.height:       height
-                color:                   qgcPal.windowTransparentText
+                color:                   qgcPal.text
 
             }
 
@@ -71,7 +61,7 @@ Item {
                 anchors.horizontalCenter: parent.horizontalCenter
                 font.pointSize:         ScreenTools.smallFontPointSize
                 text:                   activeGimbal ? activeGimbal.deviceId.rawValue : ""
-                color:                  qgcPal.windowTransparentText
+                color:                  qgcPal.text
                 visible:                multiGimbalSetup
             }
         }
@@ -87,28 +77,28 @@ Item {
             QGCLabel {
                 id:                     statusLabel
                 font.pointSize:         ScreenTools.smallFontPointSize
-                text:                   activeGimbal && activeGimbal.retracted ? 
+                text:                   activeGimbal && activeGimbal.retracted ?
                                             qsTr("Retracted") :
                                             (activeGimbal && activeGimbal.yawLock ? qsTr("Yaw locked") : qsTr("Yaw follow"))
-                color:                  qgcPal.windowTransparentText
+                color:                  qgcPal.text
                 Layout.columnSpan:      2
                 Layout.alignment:       Qt.AlignHCenter
             }
             QGCLabel {
                 id:             pitchLabel
                 font.pointSize: ScreenTools.smallFontPointSize
-                text:           activeGimbal ? qsTr("P: ") + activeGimbal.absolutePitch.rawValue.toFixed(1) : ""
-                color:          qgcPal.windowTransparentText
+                text:           activeGimbal ? qsTr("P: ") + activeGimbal.absolutePitch.valueString : ""
+                color:          qgcPal.text
             }
             QGCLabel {
                 id:             panLabel
                 font.pointSize: ScreenTools.smallFontPointSize
                 text:           activeGimbal ?
                                     (showAzimuth ?
-                                        (qsTr("Az: ") + activeGimbal.absoluteYaw.rawValue.toFixed(1)) :
-                                        (qsTr("Y: ") + activeGimbal.bodyYaw.rawValue.toFixed(1))) :
+                                        (qsTr("Az: ") + activeGimbal.absoluteYaw.valueString) :
+                                        (qsTr("Y: ") + activeGimbal.bodyYaw.valueString)) :
                                     ""
-                color:          qgcPal.windowTransparentText
+                color:          qgcPal.text
             }
         }
     }
@@ -245,39 +235,56 @@ Item {
                     id:                 enableOnScreenControlCheckbox
                     Layout.fillWidth:   true
                     text:               qsTr("Enabled")
-                    fact:               _gimbalControllerSettings.EnableOnScreenControl
+                    fact:               _gimbalControllerSettings.enableOnScreenControl
                 }
 
-                LabelledFactComboBox {
-                    label:      qsTr("Control type")
-                    fact:       _gimbalControllerSettings.ControlType
-                    visible:    enableOnScreenControlCheckbox.checked
+                FactCheckBoxSlider {
+                    Layout.fillWidth:   true
+                    text:               qsTr("Click and drag")
+                    fact:               _gimbalControllerSettings.clickAndDrag
+                    visible:            enableOnScreenControlCheckbox.checked
                 }
 
                 LabelledFactTextField {
                     label:      qsTr("Horizontal FOV")
-                    fact:       _gimbalControllerSettings.CameraHFov
-                    visible:    enableOnScreenControlCheckbox.checked && _gimbalControllerSettings.ControlType.rawValue === 0
+                    fact:       _gimbalControllerSettings.cameraHFov
+                    visible:    enableOnScreenControlCheckbox.checked && !_gimbalControllerSettings.clickAndDrag.rawValue
                 }
 
                 LabelledFactTextField {
                     label:      qsTr("Vertical FOV")
-                    fact:       _gimbalControllerSettings.CameraVFov
-                    visible:    enableOnScreenControlCheckbox.checked && _gimbalControllerSettings.ControlType.rawValue === 0
+                    fact:       _gimbalControllerSettings.cameraVFov
+                    visible:    enableOnScreenControlCheckbox.checked && !_gimbalControllerSettings.clickAndDrag.rawValue
                 }
 
                 LabelledFactTextField {
                     label:      qsTr("Max speed")
-                    fact:       _gimbalControllerSettings.CameraSlideSpeed
-                    visible:    enableOnScreenControlCheckbox.checked && _gimbalControllerSettings.ControlType.rawValue === 1
+                    fact:       _gimbalControllerSettings.cameraSlideSpeed
+                    visible:    enableOnScreenControlCheckbox.checked && _gimbalControllerSettings.clickAndDrag.rawValue
                 }
+            }
+
+            SettingsGroupLayout {
+                heading:        qsTr("Zoom speed")
+                showDividers:   false
+
+                LabelledFactTextField {
+                    label:      qsTr("Max speed (min zoom)")
+                    fact:       _gimbalControllerSettings.zoomMaxSpeed
+                }
+
+                LabelledFactTextField {
+                    label:      qsTr("Min speed (max zoom)")
+                    fact:       _gimbalControllerSettings.zoomMinSpeed
+                }
+
             }
 
             SettingsGroupLayout {
                 LabelledFactTextField {
                     label:      qsTr("Joystick buttons speed:")
                     fact:       _gimbalControllerSettings.joystickButtonsSpeed
-                    enabled:    joystickButtonsAvailable && _gimbalControllerSettings.visible
+                    enabled:    joystickButtonsAvailable && _gimbalControllerSettings.userVisible
                 }
 
                 FactCheckBoxSlider {
@@ -308,7 +315,8 @@ Item {
         function onShowAcquireGimbalControlPopup() {
             if(!acquirePopupConnection.isPopupOpen){
                 acquirePopupConnection.isPopupOpen = true;
-                mainWindow.showMessageDialog(
+                QGroundControl.showMessageDialog(
+                    control,
                     "Request Gimbal Control?",
                     "Command not sent. Another user has control of the gimbal.",
                     Dialog.Yes | Dialog.No,

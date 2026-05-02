@@ -1,21 +1,12 @@
-/****************************************************************************
- *
- * (c) 2009-2024 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
- *
- * QGroundControl is licensed according to the terms in the file
- * COPYING.md in the root of the source code directory.
- *
- ****************************************************************************/
-
 #include "VTOLLandingComplexItem.h"
-#include "JsonHelper.h"
+#include "JsonParsing.h"
 #include "MissionController.h"
 #include "PlanMasterController.h"
 #include "FlightPathSegment.h"
 #include "MissionItem.h"
 #include "SettingsManager.h"
 #include "PlanViewSettings.h"
-#include "QGC.h"
+#include "QGCMath.h"
 #include "QGCLoggingCategory.h"
 
 #include <QtCore/QJsonArray>
@@ -39,7 +30,7 @@ VTOLLandingComplexItem::VTOLLandingComplexItem(PlanMasterController* masterContr
     , _stopTakingPhotosFact     (settingsGroup, _metaDataMap[stopTakingPhotosName])
     , _stopTakingVideoFact      (settingsGroup, _metaDataMap[stopTakingVideoName])
 {
-    _editorQml      = "qrc:/qml/QGroundControl/Controls/VTOLLandingPatternEditor.qml";
+    _editorQml      = "qrc:/qml/QGroundControl/PlanView/VTOLLandingPatternEditor.qml";
     _isIncomplete   = false;
 
     _init();
@@ -71,7 +62,7 @@ void VTOLLandingComplexItem::save(QJsonArray&  missionItems)
 {
     QJsonObject saveObject = _save();
 
-    saveObject[JsonHelper::jsonVersionKey] =                    1;
+    saveObject[JsonParsing::jsonVersionKey] =                    1;
     saveObject[VisualMissionItem::jsonTypeKey] =                VisualMissionItem::jsonTypeComplexItemValue;
     saveObject[ComplexMissionItem::jsonComplexItemTypeKey] =    jsonComplexItemTypeValue;
 
@@ -80,14 +71,14 @@ void VTOLLandingComplexItem::save(QJsonArray&  missionItems)
 
 bool VTOLLandingComplexItem::load(const QJsonObject& complexObject, int sequenceNumber, QString& errorString)
 {
-    QList<JsonHelper::KeyValidateInfo> keyInfoList = {
-        { JsonHelper::jsonVersionKey, QJsonValue::Double, true },
+    QList<JsonParsing::KeyValidateInfo> keyInfoList = {
+        { JsonParsing::jsonVersionKey, QJsonValue::Double, true },
     };
-    if (!JsonHelper::validateKeys(complexObject, keyInfoList, errorString)) {
+    if (!JsonParsing::validateKeys(complexObject, keyInfoList, errorString)) {
         return false;
     }
 
-    int version = complexObject[JsonHelper::jsonVersionKey].toInt();
+    int version = complexObject[JsonParsing::jsonVersionKey].toInt();
     if (version != 1) {
         errorString = tr("%1 complex item version %2 not supported").arg(jsonComplexItemTypeValue).arg(version);
         _ignoreRecalcSignals = false;

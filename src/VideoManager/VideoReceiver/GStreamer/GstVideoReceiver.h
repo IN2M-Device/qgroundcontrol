@@ -1,15 +1,5 @@
-/****************************************************************************
- *
- * (c) 2009-2024 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
- *
- * QGroundControl is licensed according to the terms in the file
- * COPYING.md in the root of the source code directory.
- *
- ****************************************************************************/
-
 #pragma once
 
-#include <QtCore/QLoggingCategory>
 #include <QtCore/QMutex>
 #include <QtCore/QQueue>
 #include <QtCore/QThread>
@@ -21,8 +11,6 @@
 #include <gst/gstpad.h>
 
 #include "VideoReceiver.h"
-
-Q_DECLARE_LOGGING_CATEGORY(GstVideoReceiverLog)
 
 typedef std::function<void()> Task;
 
@@ -75,12 +63,13 @@ private slots:
 
 private:
     GstElement *_makeSource(const QString &input);
-    GstElement *_makeDecoder(GstCaps *caps = nullptr, GstElement *videoSink = nullptr);
+    GstElement *_makeDecoder();
     GstElement *_makeFileSink(const QString &videoFile, FILE_FORMAT format);
 
     void _onNewSourcePad(GstPad *pad);
     void _onNewDecoderPad(GstPad *pad);
     bool _addDecoder(GstElement *src);
+    void _ensureVideoSinkInPipeline();
     bool _addVideoSink(GstPad *pad);
     void _noteTeeFrame();
     void _noteVideoSinkFrame();
@@ -100,7 +89,9 @@ private:
     static void _wrapWithGhostPad(GstElement *element, GstPad *pad, gpointer data);
     static void _linkPad(GstElement *element, GstPad *pad, gpointer data);
     static gboolean _padProbe(GstElement *element, GstPad *pad, gpointer user_data);
+#if !defined(QGC_GST_BUILD_VERSION_MAJOR) || (QGC_GST_BUILD_VERSION_MAJOR == 1 && QGC_GST_BUILD_VERSION_MINOR < 28)
     static gboolean _filterParserCaps(GstElement *bin, GstPad *pad, GstElement *element, GstQuery *query, gpointer data);
+#endif
     static GstPadProbeReturn _teeProbe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data);
     static GstPadProbeReturn _videoSinkProbe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data);
     static GstPadProbeReturn _eosProbe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data);
