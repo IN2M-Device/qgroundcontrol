@@ -162,6 +162,102 @@
             "qgcRebootRequired": true,
             "label": "Force video decoder priority",
             "keywords": "decoder,hardware decode"
+        },
+        {
+            "name": "videoSource2",
+            "shortDesc": "Source for video stream 2 (UDP, TCP, RTSP, or connected USB camera).",
+            "longDesc": "Source for video stream 2. UDP, TCP, RTSP and UVC Cameras may be supported depending on Vehicle and ground station version.",
+            "type": "string",
+            "default": "",
+            "label": "Source"
+        },
+        {
+            "name": "rtspUrl2",
+            "shortDesc": "Network address for RTSP video stream 2 (e.g. rtsp://192.168.42.1:554/live).",
+            "longDesc": "RTSP url address and port for video stream 2. Example: rtsp://192.168.42.1:554/live",
+            "type": "string",
+            "default": "",
+            "label": "RTSP URL"
+        },
+        {
+            "name": "tcpUrl2",
+            "shortDesc": "Network address and port for TCP video stream 2 (e.g. 192.168.143.200:3001).",
+            "longDesc": "TCP url address and port for video stream 2. Example: 192.168.143.200:3001",
+            "type": "string",
+            "default": "",
+            "label": "TCP URL"
+        },
+        {
+            "name": "udpUrl2",
+            "shortDesc": "Network address and port for UDP video stream 2 (e.g. 0.0.0.0:5601).",
+            "longDesc": "UDP url address and port to bind to for video stream 2. Example: 0.0.0.0:5601",
+            "type": "string",
+            "default": "0.0.0.0:5601",
+            "label": "UDP URL"
+        },
+        {
+            "name": "videoSource3",
+            "shortDesc": "Source for video stream 3 (UDP, TCP, RTSP, or connected USB camera).",
+            "longDesc": "Source for video stream 3. UDP, TCP, RTSP and UVC Cameras may be supported depending on Vehicle and ground station version.",
+            "type": "string",
+            "default": "",
+            "label": "Source"
+        },
+        {
+            "name": "rtspUrl3",
+            "shortDesc": "Network address for RTSP video stream 3 (e.g. rtsp://192.168.42.1:554/live).",
+            "longDesc": "RTSP url address and port for video stream 3.",
+            "type": "string",
+            "default": "",
+            "label": "RTSP URL"
+        },
+        {
+            "name": "tcpUrl3",
+            "shortDesc": "Network address and port for TCP video stream 3 (e.g. 192.168.143.200:3001).",
+            "longDesc": "TCP url address and port for video stream 3.",
+            "type": "string",
+            "default": "",
+            "label": "TCP URL"
+        },
+        {
+            "name": "udpUrl3",
+            "shortDesc": "Network address and port for UDP video stream 3 (e.g. 0.0.0.0:5602).",
+            "longDesc": "UDP url address and port to bind to for video stream 3. Example: 0.0.0.0:5602",
+            "type": "string",
+            "default": "0.0.0.0:5602",
+            "label": "UDP URL"
+        },
+        {
+            "name": "videoSource4",
+            "shortDesc": "Source for video stream 4 (UDP, TCP, RTSP, or connected USB camera).",
+            "longDesc": "Source for video stream 4. UDP, TCP, RTSP and UVC Cameras may be supported depending on Vehicle and ground station version.",
+            "type": "string",
+            "default": "",
+            "label": "Source"
+        },
+        {
+            "name": "rtspUrl4",
+            "shortDesc": "Network address for RTSP video stream 4 (e.g. rtsp://192.168.42.1:554/live).",
+            "longDesc": "RTSP url address and port for video stream 4.",
+            "type": "string",
+            "default": "",
+            "label": "RTSP URL"
+        },
+        {
+            "name": "tcpUrl4",
+            "shortDesc": "Network address and port for TCP video stream 4 (e.g. 192.168.143.200:3001).",
+            "longDesc": "TCP url address and port for video stream 4.",
+            "type": "string",
+            "default": "",
+            "label": "TCP URL"
+        },
+        {
+            "name": "udpUrl4",
+            "shortDesc": "Network address and port for UDP video stream 4 (e.g. 0.0.0.0:5603).",
+            "longDesc": "UDP url address and port to bind to for video stream 4. Example: 0.0.0.0:5603",
+            "type": "string",
+            "default": "0.0.0.0:5603",
+            "label": "UDP URL"
         }
     ]
 }

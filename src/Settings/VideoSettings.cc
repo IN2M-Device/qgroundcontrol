@@ -57,6 +57,9 @@ DECLARE_SETTINGGROUP(Video, "Video")
     }
 
     _nameToMetaDataMap[videoSourceName]->setEnumInfo(videoSourceCookedList, videoSourceList);
+    _nameToMetaDataMap[videoSource2Name]->setEnumInfo(videoSourceCookedList, videoSourceList);
+    _nameToMetaDataMap[videoSource3Name]->setEnumInfo(videoSourceCookedList, videoSourceList);
+    _nameToMetaDataMap[videoSource4Name]->setEnumInfo(videoSourceCookedList, videoSourceList);
 
     _setForceVideoDecodeList();
 
@@ -66,11 +69,11 @@ DECLARE_SETTINGGROUP(Video, "Video")
 
 void VideoSettings::_setDefaults()
 {
-    if (_noVideo) {
-        _nameToMetaDataMap[videoSourceName]->setRawDefaultValue(videoSourceNoVideo);
-    } else {
-        _nameToMetaDataMap[videoSourceName]->setRawDefaultValue(videoDisabled);
-    }
+    const char* def = _noVideo ? videoSourceNoVideo : videoDisabled;
+    _nameToMetaDataMap[videoSourceName]->setRawDefaultValue(def);
+    _nameToMetaDataMap[videoSource2Name]->setRawDefaultValue(def);
+    _nameToMetaDataMap[videoSource3Name]->setRawDefaultValue(def);
+    _nameToMetaDataMap[videoSource4Name]->setRawDefaultValue(def);
 }
 
 DECLARE_SETTINGSFACT(VideoSettings, aspectRatio)
@@ -218,6 +221,52 @@ void VideoSettings::_configChanged(QVariant)
 {
     emit streamConfiguredChanged(streamConfigured());
 }
+
+DECLARE_SETTINGSFACT_NO_FUNC(VideoSettings, videoSource2)
+{
+    if (!_videoSource2Fact) {
+        _videoSource2Fact = _createSettingsFact(videoSource2Name);
+        if (!_videoSource2Fact->enumValues().contains(_videoSource2Fact->rawValue().toString())) {
+            _videoSource2Fact->setRawValue(_noVideo ? videoSourceNoVideo : videoDisabled);
+        }
+        connect(_videoSource2Fact, &Fact::valueChanged, this, &VideoSettings::_configChanged);
+    }
+    return _videoSource2Fact;
+}
+
+DECLARE_SETTINGSFACT_NO_FUNC(VideoSettings, videoSource3)
+{
+    if (!_videoSource3Fact) {
+        _videoSource3Fact = _createSettingsFact(videoSource3Name);
+        if (!_videoSource3Fact->enumValues().contains(_videoSource3Fact->rawValue().toString())) {
+            _videoSource3Fact->setRawValue(_noVideo ? videoSourceNoVideo : videoDisabled);
+        }
+        connect(_videoSource3Fact, &Fact::valueChanged, this, &VideoSettings::_configChanged);
+    }
+    return _videoSource3Fact;
+}
+
+DECLARE_SETTINGSFACT_NO_FUNC(VideoSettings, videoSource4)
+{
+    if (!_videoSource4Fact) {
+        _videoSource4Fact = _createSettingsFact(videoSource4Name);
+        if (!_videoSource4Fact->enumValues().contains(_videoSource4Fact->rawValue().toString())) {
+            _videoSource4Fact->setRawValue(_noVideo ? videoSourceNoVideo : videoDisabled);
+        }
+        connect(_videoSource4Fact, &Fact::valueChanged, this, &VideoSettings::_configChanged);
+    }
+    return _videoSource4Fact;
+}
+
+DECLARE_SETTINGSFACT(VideoSettings, rtspUrl2)
+DECLARE_SETTINGSFACT(VideoSettings, tcpUrl2)
+DECLARE_SETTINGSFACT(VideoSettings, udpUrl2)
+DECLARE_SETTINGSFACT(VideoSettings, rtspUrl3)
+DECLARE_SETTINGSFACT(VideoSettings, tcpUrl3)
+DECLARE_SETTINGSFACT(VideoSettings, udpUrl3)
+DECLARE_SETTINGSFACT(VideoSettings, rtspUrl4)
+DECLARE_SETTINGSFACT(VideoSettings, tcpUrl4)
+DECLARE_SETTINGSFACT(VideoSettings, udpUrl4)
 
 void VideoSettings::_setForceVideoDecodeList()
 {

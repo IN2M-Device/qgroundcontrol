@@ -29,7 +29,6 @@ set(_generated_qml_names
     RemoteIDSettings.qml
     SettingsPagesModel.qml
     TelemetrySettings.qml
-    VideoSettings.qml
     Viewer3DSettings.qml
 )
 
@@ -77,6 +76,7 @@ qt_add_qml_module(AppSettingsModule
         ${_generated_qml}
 
         # Hand-coded pages and components
+        VideoSettings.qml
         BluetoothSettings.qml
         DebugWindow.qml
         GcsPositionStatus.qml
