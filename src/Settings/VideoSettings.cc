@@ -258,6 +258,60 @@ DECLARE_SETTINGSFACT_NO_FUNC(VideoSettings, videoSource4)
     return _videoSource4Fact;
 }
 
+bool VideoSettings::streamConfigured2()
+{
+    const QString vSource = videoSource2()->rawValue().toString();
+    if (vSource == videoSourceNoVideo || vSource == videoDisabled) {
+        return false;
+    }
+    if (vSource == videoSourceUDPH264 || vSource == videoSourceUDPH265 || vSource == videoSourceMPEGTS) {
+        return !udpUrl2()->rawValue().toString().isEmpty();
+    }
+    if (vSource == videoSourceRTSP) {
+        return !rtspUrl2()->rawValue().toString().isEmpty();
+    }
+    if (vSource == videoSourceTCP) {
+        return !tcpUrl2()->rawValue().toString().isEmpty();
+    }
+    return !vSource.isEmpty();
+}
+
+bool VideoSettings::streamConfigured3()
+{
+    const QString vSource = videoSource3()->rawValue().toString();
+    if (vSource == videoSourceNoVideo || vSource == videoDisabled) {
+        return false;
+    }
+    if (vSource == videoSourceUDPH264 || vSource == videoSourceUDPH265 || vSource == videoSourceMPEGTS) {
+        return !udpUrl3()->rawValue().toString().isEmpty();
+    }
+    if (vSource == videoSourceRTSP) {
+        return !rtspUrl3()->rawValue().toString().isEmpty();
+    }
+    if (vSource == videoSourceTCP) {
+        return !tcpUrl3()->rawValue().toString().isEmpty();
+    }
+    return !vSource.isEmpty();
+}
+
+bool VideoSettings::streamConfigured4()
+{
+    const QString vSource = videoSource4()->rawValue().toString();
+    if (vSource == videoSourceNoVideo || vSource == videoDisabled) {
+        return false;
+    }
+    if (vSource == videoSourceUDPH264 || vSource == videoSourceUDPH265 || vSource == videoSourceMPEGTS) {
+        return !udpUrl4()->rawValue().toString().isEmpty();
+    }
+    if (vSource == videoSourceRTSP) {
+        return !rtspUrl4()->rawValue().toString().isEmpty();
+    }
+    if (vSource == videoSourceTCP) {
+        return !tcpUrl4()->rawValue().toString().isEmpty();
+    }
+    return !vSource.isEmpty();
+}
+
 DECLARE_SETTINGSFACT(VideoSettings, rtspUrl2)
 DECLARE_SETTINGSFACT(VideoSettings, tcpUrl2)
 DECLARE_SETTINGSFACT(VideoSettings, udpUrl2)

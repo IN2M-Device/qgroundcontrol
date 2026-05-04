@@ -51,6 +51,9 @@ public:
     Q_PROPERTY(QString  disabledVideoSource     READ disabledVideoSource    CONSTANT)
 
     bool     streamConfigured       ();
+    bool     streamConfigured2      ();
+    bool     streamConfigured3      ();
+    bool     streamConfigured4      ();
     QString  rtspVideoSource        () { return videoSourceRTSP; }
     QString  udp264VideoSource      () { return videoSourceUDPH264; }
     QString  udp265VideoSource      () { return videoSourceUDPH265; }

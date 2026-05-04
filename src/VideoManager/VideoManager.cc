@@ -220,6 +220,19 @@ void VideoManager::init(QQuickWindow *mainWindow)
 
     (void) connect(this, &VideoManager::autoStreamConfiguredChanged, this, &VideoManager::_videoSourceChanged);
 
+    (void) connect(_videoSettings->videoSource2(), &Fact::rawValueChanged, this, &VideoManager::_videoSourceChanged);
+    (void) connect(_videoSettings->udpUrl2(),      &Fact::rawValueChanged, this, &VideoManager::_videoSourceChanged);
+    (void) connect(_videoSettings->rtspUrl2(),     &Fact::rawValueChanged, this, &VideoManager::_videoSourceChanged);
+    (void) connect(_videoSettings->tcpUrl2(),      &Fact::rawValueChanged, this, &VideoManager::_videoSourceChanged);
+    (void) connect(_videoSettings->videoSource3(), &Fact::rawValueChanged, this, &VideoManager::_videoSourceChanged);
+    (void) connect(_videoSettings->udpUrl3(),      &Fact::rawValueChanged, this, &VideoManager::_videoSourceChanged);
+    (void) connect(_videoSettings->rtspUrl3(),     &Fact::rawValueChanged, this, &VideoManager::_videoSourceChanged);
+    (void) connect(_videoSettings->tcpUrl3(),      &Fact::rawValueChanged, this, &VideoManager::_videoSourceChanged);
+    (void) connect(_videoSettings->videoSource4(), &Fact::rawValueChanged, this, &VideoManager::_videoSourceChanged);
+    (void) connect(_videoSettings->udpUrl4(),      &Fact::rawValueChanged, this, &VideoManager::_videoSourceChanged);
+    (void) connect(_videoSettings->rtspUrl4(),     &Fact::rawValueChanged, this, &VideoManager::_videoSourceChanged);
+    (void) connect(_videoSettings->tcpUrl4(),      &Fact::rawValueChanged, this, &VideoManager::_videoSourceChanged);
+
 #ifdef QGC_GST_STREAMING
     if (_initState == InitState::NotStarted) {
         startGStreamerInit();
@@ -314,7 +327,10 @@ void VideoManager::_createVideoReceivers()
 #endif
     static const QStringList videoStreamList = {
         "videoContent",
-        "thermalVideo"
+        "thermalVideo",
+        "videoContent2",
+        "videoContent3",
+        "videoContent4",
     };
     for (const QString &streamName : videoStreamList) {
         VideoReceiver *receiver = QGCCorePlugin::instance()->createVideoReceiver(this);
@@ -592,10 +608,14 @@ void VideoManager::_videoSourceChanged()
 
     if (changed) {
         emit hasVideoChanged();
+        emit hasVideo2Changed();
+        emit hasVideo3Changed();
+        emit hasVideo4Changed();
         emit isStreamSourceChanged();
         emit isAutoStreamChanged();
 
-        if (hasVideo()) {
+        const bool anyHasVideo = hasVideo() || hasVideo2() || hasVideo3() || hasVideo4();
+        if (anyHasVideo) {
             _restartAllVideos();
         } else {
             stopVideo();
@@ -733,6 +753,11 @@ bool VideoManager::_updateSettings(VideoReceiver *receiver)
         return settingsChanged;
     }
 
+    if (receiver->name() != QStringLiteral("videoContent")) {
+        settingsChanged |= _updateAdditionalStreamSettings(receiver);
+        return settingsChanged;
+    }
+
     settingsChanged |= _updateUVC(receiver);
     settingsChanged |= _updateAutoStream(receiver);
 
@@ -767,6 +792,67 @@ bool VideoManager::_updateSettings(VideoReceiver *receiver)
     }
 
     return settingsChanged;
+}
+
+bool VideoManager::_updateAdditionalStreamSettings(VideoReceiver *receiver)
+{
+    bool settingsChanged = false;
+    const QString name = receiver->name();
+    QString source, udpUrl, rtspUrl, tcpUrl;
+
+    if (name == QStringLiteral("videoContent2")) {
+        source = _videoSettings->videoSource2()->rawValue().toString();
+        udpUrl = _videoSettings->udpUrl2()->rawValue().toString();
+        rtspUrl = _videoSettings->rtspUrl2()->rawValue().toString();
+        tcpUrl = _videoSettings->tcpUrl2()->rawValue().toString();
+    } else if (name == QStringLiteral("videoContent3")) {
+        source = _videoSettings->videoSource3()->rawValue().toString();
+        udpUrl = _videoSettings->udpUrl3()->rawValue().toString();
+        rtspUrl = _videoSettings->rtspUrl3()->rawValue().toString();
+        tcpUrl = _videoSettings->tcpUrl3()->rawValue().toString();
+    } else if (name == QStringLiteral("videoContent4")) {
+        source = _videoSettings->videoSource4()->rawValue().toString();
+        udpUrl = _videoSettings->udpUrl4()->rawValue().toString();
+        rtspUrl = _videoSettings->rtspUrl4()->rawValue().toString();
+        tcpUrl = _videoSettings->tcpUrl4()->rawValue().toString();
+    } else {
+        return false;
+    }
+
+    if (source == VideoSettings::videoSourceUDPH264) {
+        settingsChanged |= _updateVideoUri(receiver, QStringLiteral("udp://%1").arg(udpUrl));
+    } else if (source == VideoSettings::videoSourceUDPH265) {
+        settingsChanged |= _updateVideoUri(receiver, QStringLiteral("udp265://%1").arg(udpUrl));
+    } else if (source == VideoSettings::videoSourceMPEGTS) {
+        settingsChanged |= _updateVideoUri(receiver, QStringLiteral("mpegts://%1").arg(udpUrl));
+    } else if (source == VideoSettings::videoSourceRTSP) {
+        settingsChanged |= _updateVideoUri(receiver, rtspUrl);
+    } else if (source == VideoSettings::videoSourceTCP) {
+        settingsChanged |= _updateVideoUri(receiver, QStringLiteral("tcp://%1").arg(tcpUrl));
+    } else if (source == VideoSettings::videoSourceHerelinkAirUnit) {
+        settingsChanged |= _updateVideoUri(receiver, QStringLiteral("rtsp://192.168.0.10:8554/H264Video"));
+    } else if (source == VideoSettings::videoSourceHerelinkHotspot) {
+        settingsChanged |= _updateVideoUri(receiver, QStringLiteral("rtsp://192.168.43.1:8554/fpv_stream"));
+    } else {
+        settingsChanged |= _updateVideoUri(receiver, QString());
+    }
+
+    return settingsChanged;
+}
+
+bool VideoManager::hasVideo2() const
+{
+    return _videoSettings->streamEnabled()->rawValue().toBool() && _videoSettings->streamConfigured2();
+}
+
+bool VideoManager::hasVideo3() const
+{
+    return _videoSettings->streamEnabled()->rawValue().toBool() && _videoSettings->streamConfigured3();
+}
+
+bool VideoManager::hasVideo4() const
+{
+    return _videoSettings->streamEnabled()->rawValue().toBool() && _videoSettings->streamConfigured4();
 }
 
 void VideoManager::_setActiveVehicle(Vehicle *vehicle)
@@ -885,11 +971,8 @@ void VideoManager::_startReceiver(VideoReceiver *receiver)
         return;
     }
 
-    const QString source = _videoSettings->videoSource()->rawValue().toString();
-    /* The gstreamer rtsp source will switch to tcp if udp is not available after 5 seconds.
-       So we should allow for some negotiation time for rtsp */
-
-    const uint32_t timeout = ((source == VideoSettings::videoSourceRTSP) ? _videoSettings->rtspTimeout()->rawValue().toUInt() : 3);
+    const uint32_t timeout = receiver->uri().startsWith(QStringLiteral("rtsp://"))
+        ? _videoSettings->rtspTimeout()->rawValue().toUInt() : 3;
 
     receiver->start(timeout);
 }
@@ -970,8 +1053,20 @@ void VideoManager::_initVideoReceiver(VideoReceiver *receiver, QQuickWindow *win
     (void) connect(receiver, &VideoReceiver::decodingChanged, this, [this, receiver](bool active) {
         qCDebug(VideoManagerLog) << "Video" << receiver->name() << "decoding changed, active:" << (active ? "yes" : "no");
         if (!receiver->isThermal()) {
-            _decoding = active;
-            emit decodingChanged();
+            const QString &name = receiver->name();
+            if (name == QStringLiteral("videoContent2")) {
+                _decoding2 = active;
+                emit decoding2Changed();
+            } else if (name == QStringLiteral("videoContent3")) {
+                _decoding3 = active;
+                emit decoding3Changed();
+            } else if (name == QStringLiteral("videoContent4")) {
+                _decoding4 = active;
+                emit decoding4Changed();
+            } else {
+                _decoding = active;
+                emit decodingChanged();
+            }
         }
     });
 
@@ -1020,7 +1115,18 @@ void VideoManager::_initVideoReceiver(VideoReceiver *receiver, QQuickWindow *win
 
     _videoReceivers.append(receiver);
 
-    if (hasVideo()) {
+    const QString &receiverName = receiver->name();
+    bool shouldStart = false;
+    if (receiverName == QStringLiteral("videoContent2")) {
+        shouldStart = hasVideo2();
+    } else if (receiverName == QStringLiteral("videoContent3")) {
+        shouldStart = hasVideo3();
+    } else if (receiverName == QStringLiteral("videoContent4")) {
+        shouldStart = hasVideo4();
+    } else {
+        shouldStart = hasVideo();
+    }
+    if (shouldStart) {
         _startReceiver(receiver);
     }
 }
@@ -1029,7 +1135,7 @@ void VideoManager::startVideo()
 {
     qCDebug(VideoManagerLog) << "startVideo";
 
-    if (!hasVideo()) {
+    if (!hasVideo() && !hasVideo2() && !hasVideo3() && !hasVideo4()) {
         qCDebug(VideoManagerLog) << "Stream not enabled/configured";
         return;
     }

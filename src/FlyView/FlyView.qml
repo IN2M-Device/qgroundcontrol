@@ -104,6 +104,152 @@ Item {
             property real bottomEdgeLeftInset: visible ? height + anchors.margins : 0
         }
 
+        // ── Extra video streams (2, 3, 4) — fixed overlays after stream 1 ──
+        // Each item is anchored to the right of the previous one.
+        // The Loaders are always active so VideoManager can find the items by
+        // objectName even when a stream is not yet visible.
+
+        Item {
+            id:                     _stream2
+            anchors.left:           _pipView.right
+            anchors.leftMargin:     _toolsMargin
+            anchors.bottom:         parent.bottom
+            anchors.bottomMargin:   _toolsMargin
+            width:                  _pipView.width
+            height:                 _pipView.height
+            visible:                QGroundControl.videoManager.hasVideo2 && !QGroundControl.videoManager.fullScreen
+            z:                      QGroundControl.zOrderWidgets
+
+            Rectangle { anchors.fill: parent; color: "black" }
+
+            Loader {
+                anchors.fill:       parent
+                visible:            QGroundControl.videoManager.decoding2
+                sourceComponent:    QGroundControl.videoManager.gstreamerD3D11Sink  ? _s2D3D11
+                                    : QGroundControl.videoManager.gstreamerAppleSink ? _s2Metal
+                                    : _s2GL
+            }
+            Item {
+                anchors.fill:   parent
+                visible:        !QGroundControl.videoManager.decoding2
+                Image { anchors.fill: parent; source: "/res/NoVideoBackground.jpg"; fillMode: Image.PreserveAspectCrop }
+                QGCLabel {
+                    anchors.centerIn:   parent
+                    text:               qsTr("WAITING FOR VIDEO")
+                    font.bold:          true
+                    color:              "white"
+                    font.pointSize:     ScreenTools.smallFontPointSize
+                }
+            }
+            QGCLabel {
+                anchors.top:        parent.top
+                anchors.left:       parent.left
+                anchors.margins:    ScreenTools.defaultFontPixelWidth * 0.4
+                text:               qsTr("CAM 2")
+                color:              "white"
+                font.bold:          true
+                font.pointSize:     ScreenTools.smallFontPointSize
+                z:                  1
+            }
+            Component { id: _s2GL;    QGCVideoBackground    { objectName: "videoContent2" } }
+            Component { id: _s2D3D11; QGCVideoBackgroundD3D11 { objectName: "videoContent2" } }
+            Component { id: _s2Metal; FlightDisplayViewMetal  { objectName: "videoContent2" } }
+        }
+
+        Item {
+            id:                     _stream3
+            anchors.left:           _stream2.right
+            anchors.leftMargin:     _toolsMargin
+            anchors.bottom:         parent.bottom
+            anchors.bottomMargin:   _toolsMargin
+            width:                  _pipView.width
+            height:                 _pipView.height
+            visible:                QGroundControl.videoManager.hasVideo3 && !QGroundControl.videoManager.fullScreen
+            z:                      QGroundControl.zOrderWidgets
+
+            Rectangle { anchors.fill: parent; color: "black" }
+
+            Loader {
+                anchors.fill:       parent
+                visible:            QGroundControl.videoManager.decoding3
+                sourceComponent:    QGroundControl.videoManager.gstreamerD3D11Sink  ? _s3D3D11
+                                    : QGroundControl.videoManager.gstreamerAppleSink ? _s3Metal
+                                    : _s3GL
+            }
+            Item {
+                anchors.fill:   parent
+                visible:        !QGroundControl.videoManager.decoding3
+                Image { anchors.fill: parent; source: "/res/NoVideoBackground.jpg"; fillMode: Image.PreserveAspectCrop }
+                QGCLabel {
+                    anchors.centerIn:   parent
+                    text:               qsTr("WAITING FOR VIDEO")
+                    font.bold:          true
+                    color:              "white"
+                    font.pointSize:     ScreenTools.smallFontPointSize
+                }
+            }
+            QGCLabel {
+                anchors.top:        parent.top
+                anchors.left:       parent.left
+                anchors.margins:    ScreenTools.defaultFontPixelWidth * 0.4
+                text:               qsTr("CAM 3")
+                color:              "white"
+                font.bold:          true
+                font.pointSize:     ScreenTools.smallFontPointSize
+                z:                  1
+            }
+            Component { id: _s3GL;    QGCVideoBackground    { objectName: "videoContent3" } }
+            Component { id: _s3D3D11; QGCVideoBackgroundD3D11 { objectName: "videoContent3" } }
+            Component { id: _s3Metal; FlightDisplayViewMetal  { objectName: "videoContent3" } }
+        }
+
+        Item {
+            id:                     _stream4
+            anchors.left:           _stream3.right
+            anchors.leftMargin:     _toolsMargin
+            anchors.bottom:         parent.bottom
+            anchors.bottomMargin:   _toolsMargin
+            width:                  _pipView.width
+            height:                 _pipView.height
+            visible:                QGroundControl.videoManager.hasVideo4 && !QGroundControl.videoManager.fullScreen
+            z:                      QGroundControl.zOrderWidgets
+
+            Rectangle { anchors.fill: parent; color: "black" }
+
+            Loader {
+                anchors.fill:       parent
+                visible:            QGroundControl.videoManager.decoding4
+                sourceComponent:    QGroundControl.videoManager.gstreamerD3D11Sink  ? _s4D3D11
+                                    : QGroundControl.videoManager.gstreamerAppleSink ? _s4Metal
+                                    : _s4GL
+            }
+            Item {
+                anchors.fill:   parent
+                visible:        !QGroundControl.videoManager.decoding4
+                Image { anchors.fill: parent; source: "/res/NoVideoBackground.jpg"; fillMode: Image.PreserveAspectCrop }
+                QGCLabel {
+                    anchors.centerIn:   parent
+                    text:               qsTr("WAITING FOR VIDEO")
+                    font.bold:          true
+                    color:              "white"
+                    font.pointSize:     ScreenTools.smallFontPointSize
+                }
+            }
+            QGCLabel {
+                anchors.top:        parent.top
+                anchors.left:       parent.left
+                anchors.margins:    ScreenTools.defaultFontPixelWidth * 0.4
+                text:               qsTr("CAM 4")
+                color:              "white"
+                font.bold:          true
+                font.pointSize:     ScreenTools.smallFontPointSize
+                z:                  1
+            }
+            Component { id: _s4GL;    QGCVideoBackground    { objectName: "videoContent4" } }
+            Component { id: _s4D3D11; QGCVideoBackgroundD3D11 { objectName: "videoContent4" } }
+            Component { id: _s4Metal; FlightDisplayViewMetal  { objectName: "videoContent4" } }
+        }
+
         FlyViewWidgetLayer {
             id:                     widgetLayer
             anchors.top:            parent.top
