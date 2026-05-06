@@ -230,6 +230,55 @@ Item {
             z:                      QGroundControl.zOrderWidgets
         }
 
+        // ── Cross-pip coordination ──
+        // Enforce "only one stream is full at a time":
+        //   Case 1 & 2: pip/full swap works as normal (traditional behaviour).
+        //   Case 3: when pip N is clicked while another stream is already full,
+        //           the other stream is returned to pip first, then stream N goes full.
+        // Applies symmetrically to stream 1 (videoControl / _pipView) and
+        // streams 2/3/4 (_videoStreamN / _pipViewN).
+
+        Connections {
+            target: videoControl.pipState
+            function onStateChanged() {
+                if (videoControl.pipState.state === videoControl.pipState.fullState) {
+                    if (_videoStream2.pipState.state === _videoStream2.pipState.fullState) _pipView2._swapPip()
+                    if (_videoStream3.pipState.state === _videoStream3.pipState.fullState) _pipView3._swapPip()
+                    if (_videoStream4.pipState.state === _videoStream4.pipState.fullState) _pipView4._swapPip()
+                }
+            }
+        }
+        Connections {
+            target: _videoStream2.pipState
+            function onStateChanged() {
+                if (_videoStream2.pipState.state === _videoStream2.pipState.fullState) {
+                    if (videoControl.pipState.state  === videoControl.pipState.fullState)  _pipView._swapPip()
+                    if (_videoStream3.pipState.state === _videoStream3.pipState.fullState) _pipView3._swapPip()
+                    if (_videoStream4.pipState.state === _videoStream4.pipState.fullState) _pipView4._swapPip()
+                }
+            }
+        }
+        Connections {
+            target: _videoStream3.pipState
+            function onStateChanged() {
+                if (_videoStream3.pipState.state === _videoStream3.pipState.fullState) {
+                    if (videoControl.pipState.state  === videoControl.pipState.fullState)  _pipView._swapPip()
+                    if (_videoStream2.pipState.state === _videoStream2.pipState.fullState) _pipView2._swapPip()
+                    if (_videoStream4.pipState.state === _videoStream4.pipState.fullState) _pipView4._swapPip()
+                }
+            }
+        }
+        Connections {
+            target: _videoStream4.pipState
+            function onStateChanged() {
+                if (_videoStream4.pipState.state === _videoStream4.pipState.fullState) {
+                    if (videoControl.pipState.state  === videoControl.pipState.fullState)  _pipView._swapPip()
+                    if (_videoStream2.pipState.state === _videoStream2.pipState.fullState) _pipView2._swapPip()
+                    if (_videoStream3.pipState.state === _videoStream3.pipState.fullState) _pipView3._swapPip()
+                }
+            }
+        }
+
         FlyViewWidgetLayer {
             id:                     widgetLayer
             anchors.top:            parent.top
