@@ -39,8 +39,8 @@ qt_add_qml_module(FlyViewModule
 
         FlyViewTopRightColumnLayout.qml
         FlyViewTopRightPanel.qml
+        FlyViewExtraStream.qml
         FlyViewVideo.qml
-        FlyViewVideoStream.qml
         FlyViewWidgetLayer.qml
         GuidedActionConfirm.qml
         GuidedActionLand.qml

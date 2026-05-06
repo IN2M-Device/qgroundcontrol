@@ -49,6 +49,9 @@ Item {
     property real   _fullItemZorder:    0
     property real   _pipItemZorder:     QGroundControl.zOrderWidgets
 
+    // 0 = no extra stream full; 2/3/4 = that stream's video fills the screen
+    property int    _fullExtraStream:   0
+
     function _calcCenterViewPort() {
         var newToolInset = Qt.rect(0, 0, width, height)
         toolstrip.adjustToolInset(newToolInset)
@@ -104,177 +107,92 @@ Item {
             property real bottomEdgeLeftInset: visible ? height + anchors.margins : 0
         }
 
-        // ── Extra video streams (2, 3, 4) — each with its own PipView ──
-        // Clicking a pip thumbnail swaps that stream between pip and full-screen,
-        // identical to the map ↔ video1 swap of stream 1.
+        // ── Extra video streams (2, 3, 4) ────────────────────────────────────────
+        // Each pip container stays fixed at the bottom.  Only the video content
+        // item expands/collapses to full-screen via ParentChange + AnchorChanges,
+        // so the anchor chain between pips is never disrupted.
         //
-        // Each PipView uses an invisible placeholder as item1. When item1 (placeholder)
-        // is "full" it fills the screen transparently, revealing the map behind it.
-        // When item1 is in pip, the "CAM N" label shows so the user knows that stream
-        // is currently the full item and can click to return to pip mode.
+        // When a stream goes full:
+        //   • Its video content fills mapHolder (z=1, above map, below widgets/pips).
+        //   • A live ShaderEffectSource of the map fills that pip — identical to how
+        //     stream 1 shows the map in its pip when video1 is full.
+        //
+        // _fullExtraStream tracks which stream (0=none) is currently full-screen.
+        // The binding isFullScreen = (_fullExtraStream === N) coordinates all pips
+        // automatically: setting _fullExtraStream to N collapses any previous stream.
 
-        FlyViewVideoStream {
-            id:          _videoStream2
-            pipView:     _pipView2
-            streamIndex: 2
-            decoding:    QGroundControl.videoManager.decoding2
-        }
+        FlyViewExtraStream {
+            id:           _stream2
+            streamIndex:  2
+            isFullScreen: _fullExtraStream === 2
+            decoding:     QGroundControl.videoManager.decoding2
+            mapItem:      mapControl
+            visible:      QGroundControl.videoManager.hasVideo2 && !QGroundControl.videoManager.fullScreen
+            z:            QGroundControl.zOrderWidgets
 
-        Item {
-            id:      _stream2Placeholder
-            enabled: false
-            property var pipState: _ph2
-            PipState { id: _ph2; pipView: _pipView2; isDark: false }
-            Rectangle {
-                anchors.fill: parent
-                color:        "black"
-                visible:      _ph2.state === _ph2.pipState
-                QGCLabel {
-                    anchors.centerIn: parent
-                    text:             qsTr("CAM 2")
-                    color:            "white"
-                    font.bold:        true
-                    font.pointSize:   ScreenTools.smallFontPointSize
-                }
+            anchors.left:         _pipView.right
+            anchors.leftMargin:   _toolsMargin
+            anchors.bottom:       parent.bottom
+            anchors.bottomMargin: _toolsMargin
+
+            onVisibleChanged: if (!visible) _fullExtraStream = 0
+            onActivated: {
+                if (videoControl.pipState.state === videoControl.pipState.fullState) _pipView._swapPip()
+                _fullExtraStream = 2
             }
+            onDeactivated: _fullExtraStream = 0
         }
 
-        PipView {
-            id:                     _pipView2
-            anchors.left:           _pipView.right
-            anchors.leftMargin:     _toolsMargin
-            anchors.bottom:         parent.bottom
-            anchors.bottomMargin:   _toolsMargin
-            item1IsFullSettingsKey: "FlyViewStream2PlaceholderFull"
-            item1:                  _stream2Placeholder
-            item2:                  QGroundControl.videoManager.hasVideo2 ? _videoStream2 : null
-            show:                   QGroundControl.videoManager.hasVideo2 && !QGroundControl.videoManager.fullScreen
-            z:                      QGroundControl.zOrderWidgets
-        }
+        FlyViewExtraStream {
+            id:           _stream3
+            streamIndex:  3
+            isFullScreen: _fullExtraStream === 3
+            decoding:     QGroundControl.videoManager.decoding3
+            mapItem:      mapControl
+            visible:      QGroundControl.videoManager.hasVideo3 && !QGroundControl.videoManager.fullScreen
+            z:            QGroundControl.zOrderWidgets
 
-        FlyViewVideoStream {
-            id:          _videoStream3
-            pipView:     _pipView3
-            streamIndex: 3
-            decoding:    QGroundControl.videoManager.decoding3
-        }
+            anchors.left:         _stream2.right
+            anchors.leftMargin:   _toolsMargin
+            anchors.bottom:       parent.bottom
+            anchors.bottomMargin: _toolsMargin
 
-        Item {
-            id:      _stream3Placeholder
-            enabled: false
-            property var pipState: _ph3
-            PipState { id: _ph3; pipView: _pipView3; isDark: false }
-            Rectangle {
-                anchors.fill: parent
-                color:        "black"
-                visible:      _ph3.state === _ph3.pipState
-                QGCLabel {
-                    anchors.centerIn: parent
-                    text:             qsTr("CAM 3")
-                    color:            "white"
-                    font.bold:        true
-                    font.pointSize:   ScreenTools.smallFontPointSize
-                }
+            onVisibleChanged: if (!visible) _fullExtraStream = 0
+            onActivated: {
+                if (videoControl.pipState.state === videoControl.pipState.fullState) _pipView._swapPip()
+                _fullExtraStream = 3
             }
+            onDeactivated: _fullExtraStream = 0
         }
 
-        PipView {
-            id:                     _pipView3
-            anchors.left:           _pipView2.right
-            anchors.leftMargin:     _toolsMargin
-            anchors.bottom:         parent.bottom
-            anchors.bottomMargin:   _toolsMargin
-            item1IsFullSettingsKey: "FlyViewStream3PlaceholderFull"
-            item1:                  _stream3Placeholder
-            item2:                  QGroundControl.videoManager.hasVideo3 ? _videoStream3 : null
-            show:                   QGroundControl.videoManager.hasVideo3 && !QGroundControl.videoManager.fullScreen
-            z:                      QGroundControl.zOrderWidgets
-        }
+        FlyViewExtraStream {
+            id:           _stream4
+            streamIndex:  4
+            isFullScreen: _fullExtraStream === 4
+            decoding:     QGroundControl.videoManager.decoding4
+            mapItem:      mapControl
+            visible:      QGroundControl.videoManager.hasVideo4 && !QGroundControl.videoManager.fullScreen
+            z:            QGroundControl.zOrderWidgets
 
-        FlyViewVideoStream {
-            id:          _videoStream4
-            pipView:     _pipView4
-            streamIndex: 4
-            decoding:    QGroundControl.videoManager.decoding4
-        }
+            anchors.left:         _stream3.right
+            anchors.leftMargin:   _toolsMargin
+            anchors.bottom:       parent.bottom
+            anchors.bottomMargin: _toolsMargin
 
-        Item {
-            id:      _stream4Placeholder
-            enabled: false
-            property var pipState: _ph4
-            PipState { id: _ph4; pipView: _pipView4; isDark: false }
-            Rectangle {
-                anchors.fill: parent
-                color:        "black"
-                visible:      _ph4.state === _ph4.pipState
-                QGCLabel {
-                    anchors.centerIn: parent
-                    text:             qsTr("CAM 4")
-                    color:            "white"
-                    font.bold:        true
-                    font.pointSize:   ScreenTools.smallFontPointSize
-                }
+            onVisibleChanged: if (!visible) _fullExtraStream = 0
+            onActivated: {
+                if (videoControl.pipState.state === videoControl.pipState.fullState) _pipView._swapPip()
+                _fullExtraStream = 4
             }
+            onDeactivated: _fullExtraStream = 0
         }
 
-        PipView {
-            id:                     _pipView4
-            anchors.left:           _pipView3.right
-            anchors.leftMargin:     _toolsMargin
-            anchors.bottom:         parent.bottom
-            anchors.bottomMargin:   _toolsMargin
-            item1IsFullSettingsKey: "FlyViewStream4PlaceholderFull"
-            item1:                  _stream4Placeholder
-            item2:                  QGroundControl.videoManager.hasVideo4 ? _videoStream4 : null
-            show:                   QGroundControl.videoManager.hasVideo4 && !QGroundControl.videoManager.fullScreen
-            z:                      QGroundControl.zOrderWidgets
-        }
-
-        // ── Cross-pip coordination ──
-        // Enforce "only one stream is full at a time":
-        //   Case 1 & 2: pip/full swap works as normal (traditional behaviour).
-        //   Case 3: when pip N is clicked while another stream is already full,
-        //           the other stream is returned to pip first, then stream N goes full.
-        // Applies symmetrically to stream 1 (videoControl / _pipView) and
-        // streams 2/3/4 (_videoStreamN / _pipViewN).
-
+        // When stream 1 (video1) goes full via its own PipView, collapse any extra stream
         Connections {
             target: videoControl.pipState
             function onStateChanged() {
                 if (videoControl.pipState.state === videoControl.pipState.fullState) {
-                    if (_videoStream2.pipState.state === _videoStream2.pipState.fullState) _pipView2._swapPip()
-                    if (_videoStream3.pipState.state === _videoStream3.pipState.fullState) _pipView3._swapPip()
-                    if (_videoStream4.pipState.state === _videoStream4.pipState.fullState) _pipView4._swapPip()
-                }
-            }
-        }
-        Connections {
-            target: _videoStream2.pipState
-            function onStateChanged() {
-                if (_videoStream2.pipState.state === _videoStream2.pipState.fullState) {
-                    if (videoControl.pipState.state  === videoControl.pipState.fullState)  _pipView._swapPip()
-                    if (_videoStream3.pipState.state === _videoStream3.pipState.fullState) _pipView3._swapPip()
-                    if (_videoStream4.pipState.state === _videoStream4.pipState.fullState) _pipView4._swapPip()
-                }
-            }
-        }
-        Connections {
-            target: _videoStream3.pipState
-            function onStateChanged() {
-                if (_videoStream3.pipState.state === _videoStream3.pipState.fullState) {
-                    if (videoControl.pipState.state  === videoControl.pipState.fullState)  _pipView._swapPip()
-                    if (_videoStream2.pipState.state === _videoStream2.pipState.fullState) _pipView2._swapPip()
-                    if (_videoStream4.pipState.state === _videoStream4.pipState.fullState) _pipView4._swapPip()
-                }
-            }
-        }
-        Connections {
-            target: _videoStream4.pipState
-            function onStateChanged() {
-                if (_videoStream4.pipState.state === _videoStream4.pipState.fullState) {
-                    if (videoControl.pipState.state  === videoControl.pipState.fullState)  _pipView._swapPip()
-                    if (_videoStream2.pipState.state === _videoStream2.pipState.fullState) _pipView2._swapPip()
-                    if (_videoStream3.pipState.state === _videoStream3.pipState.fullState) _pipView3._swapPip()
+                    _fullExtraStream = 0
                 }
             }
         }
