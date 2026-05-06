@@ -104,138 +104,130 @@ Item {
             property real bottomEdgeLeftInset: visible ? height + anchors.margins : 0
         }
 
-        // ── Extra video streams (2, 3, 4) — each in its own resizable/collapsible pip ──
+        // ── Extra video streams (2, 3, 4) — each with its own PipView ──
+        // Clicking a pip thumbnail swaps that stream between pip and full-screen,
+        // identical to the map ↔ video1 swap of stream 1.
+        //
+        // Each PipView uses an invisible placeholder as item1. When item1 (placeholder)
+        // is "full" it fills the screen transparently, revealing the map behind it.
+        // When item1 is in pip, the "CAM N" label shows so the user knows that stream
+        // is currently the full item and can click to return to pip mode.
 
-        FlyViewStreamPip {
+        FlyViewVideoStream {
+            id:          _videoStream2
+            pipView:     _pipView2
+            streamIndex: 2
+            decoding:    QGroundControl.videoManager.decoding2
+        }
+
+        Item {
+            id:      _stream2Placeholder
+            enabled: false
+            property var pipState: _ph2
+            PipState { id: _ph2; pipView: _pipView2; isDark: false }
+            Rectangle {
+                anchors.fill: parent
+                color:        "black"
+                visible:      _ph2.state === _ph2.pipState
+                QGCLabel {
+                    anchors.centerIn: parent
+                    text:             qsTr("CAM 2")
+                    color:            "white"
+                    font.bold:        true
+                    font.pointSize:   ScreenTools.smallFontPointSize
+                }
+            }
+        }
+
+        PipView {
             id:                     _pipView2
             anchors.left:           _pipView.right
             anchors.leftMargin:     _toolsMargin
             anchors.bottom:         parent.bottom
             anchors.bottomMargin:   _toolsMargin
+            item1IsFullSettingsKey: "FlyViewStream2PlaceholderFull"
+            item1:                  _stream2Placeholder
+            item2:                  QGroundControl.videoManager.hasVideo2 ? _videoStream2 : null
             show:                   QGroundControl.videoManager.hasVideo2 && !QGroundControl.videoManager.fullScreen
             z:                      QGroundControl.zOrderWidgets
+        }
 
-            Rectangle { anchors.fill: parent; color: "black" }
-            Loader {
-                anchors.fill:       parent
-                visible:            QGroundControl.videoManager.decoding2
-                sourceComponent:    QGroundControl.videoManager.gstreamerD3D11Sink   ? _s2D3D11
-                                    : QGroundControl.videoManager.gstreamerAppleSink ? _s2Metal
-                                    : _s2GL
-            }
-            Item {
-                anchors.fill:   parent
-                visible:        !QGroundControl.videoManager.decoding2
-                Image { anchors.fill: parent; source: "/res/NoVideoBackground.jpg"; fillMode: Image.PreserveAspectCrop }
+        FlyViewVideoStream {
+            id:          _videoStream3
+            pipView:     _pipView3
+            streamIndex: 3
+            decoding:    QGroundControl.videoManager.decoding3
+        }
+
+        Item {
+            id:      _stream3Placeholder
+            enabled: false
+            property var pipState: _ph3
+            PipState { id: _ph3; pipView: _pipView3; isDark: false }
+            Rectangle {
+                anchors.fill: parent
+                color:        "black"
+                visible:      _ph3.state === _ph3.pipState
                 QGCLabel {
                     anchors.centerIn: parent
-                    text:             qsTr("WAITING FOR VIDEO")
-                    font.bold:        true
+                    text:             qsTr("CAM 3")
                     color:            "white"
+                    font.bold:        true
                     font.pointSize:   ScreenTools.smallFontPointSize
                 }
             }
-            QGCLabel {
-                anchors.top:     parent.top
-                anchors.left:    parent.left
-                anchors.margins: ScreenTools.defaultFontPixelWidth * 0.4
-                text:            qsTr("CAM 2")
-                color:           "white"
-                font.bold:       true
-                font.pointSize:  ScreenTools.smallFontPointSize
-                z:               1
-            }
-            Component { id: _s2GL;    QGCVideoBackground      { objectName: "videoContent2" } }
-            Component { id: _s2D3D11; QGCVideoBackgroundD3D11 { objectName: "videoContent2" } }
-            Component { id: _s2Metal; FlightDisplayViewMetal   { objectName: "videoContent2" } }
         }
 
-        FlyViewStreamPip {
+        PipView {
             id:                     _pipView3
             anchors.left:           _pipView2.right
             anchors.leftMargin:     _toolsMargin
             anchors.bottom:         parent.bottom
             anchors.bottomMargin:   _toolsMargin
+            item1IsFullSettingsKey: "FlyViewStream3PlaceholderFull"
+            item1:                  _stream3Placeholder
+            item2:                  QGroundControl.videoManager.hasVideo3 ? _videoStream3 : null
             show:                   QGroundControl.videoManager.hasVideo3 && !QGroundControl.videoManager.fullScreen
             z:                      QGroundControl.zOrderWidgets
+        }
 
-            Rectangle { anchors.fill: parent; color: "black" }
-            Loader {
-                anchors.fill:       parent
-                visible:            QGroundControl.videoManager.decoding3
-                sourceComponent:    QGroundControl.videoManager.gstreamerD3D11Sink   ? _s3D3D11
-                                    : QGroundControl.videoManager.gstreamerAppleSink ? _s3Metal
-                                    : _s3GL
-            }
-            Item {
-                anchors.fill:   parent
-                visible:        !QGroundControl.videoManager.decoding3
-                Image { anchors.fill: parent; source: "/res/NoVideoBackground.jpg"; fillMode: Image.PreserveAspectCrop }
+        FlyViewVideoStream {
+            id:          _videoStream4
+            pipView:     _pipView4
+            streamIndex: 4
+            decoding:    QGroundControl.videoManager.decoding4
+        }
+
+        Item {
+            id:      _stream4Placeholder
+            enabled: false
+            property var pipState: _ph4
+            PipState { id: _ph4; pipView: _pipView4; isDark: false }
+            Rectangle {
+                anchors.fill: parent
+                color:        "black"
+                visible:      _ph4.state === _ph4.pipState
                 QGCLabel {
                     anchors.centerIn: parent
-                    text:             qsTr("WAITING FOR VIDEO")
-                    font.bold:        true
+                    text:             qsTr("CAM 4")
                     color:            "white"
+                    font.bold:        true
                     font.pointSize:   ScreenTools.smallFontPointSize
                 }
             }
-            QGCLabel {
-                anchors.top:     parent.top
-                anchors.left:    parent.left
-                anchors.margins: ScreenTools.defaultFontPixelWidth * 0.4
-                text:            qsTr("CAM 3")
-                color:           "white"
-                font.bold:       true
-                font.pointSize:  ScreenTools.smallFontPointSize
-                z:               1
-            }
-            Component { id: _s3GL;    QGCVideoBackground      { objectName: "videoContent3" } }
-            Component { id: _s3D3D11; QGCVideoBackgroundD3D11 { objectName: "videoContent3" } }
-            Component { id: _s3Metal; FlightDisplayViewMetal   { objectName: "videoContent3" } }
         }
 
-        FlyViewStreamPip {
+        PipView {
             id:                     _pipView4
             anchors.left:           _pipView3.right
             anchors.leftMargin:     _toolsMargin
             anchors.bottom:         parent.bottom
             anchors.bottomMargin:   _toolsMargin
+            item1IsFullSettingsKey: "FlyViewStream4PlaceholderFull"
+            item1:                  _stream4Placeholder
+            item2:                  QGroundControl.videoManager.hasVideo4 ? _videoStream4 : null
             show:                   QGroundControl.videoManager.hasVideo4 && !QGroundControl.videoManager.fullScreen
             z:                      QGroundControl.zOrderWidgets
-
-            Rectangle { anchors.fill: parent; color: "black" }
-            Loader {
-                anchors.fill:       parent
-                visible:            QGroundControl.videoManager.decoding4
-                sourceComponent:    QGroundControl.videoManager.gstreamerD3D11Sink   ? _s4D3D11
-                                    : QGroundControl.videoManager.gstreamerAppleSink ? _s4Metal
-                                    : _s4GL
-            }
-            Item {
-                anchors.fill:   parent
-                visible:        !QGroundControl.videoManager.decoding4
-                Image { anchors.fill: parent; source: "/res/NoVideoBackground.jpg"; fillMode: Image.PreserveAspectCrop }
-                QGCLabel {
-                    anchors.centerIn: parent
-                    text:             qsTr("WAITING FOR VIDEO")
-                    font.bold:        true
-                    color:            "white"
-                    font.pointSize:   ScreenTools.smallFontPointSize
-                }
-            }
-            QGCLabel {
-                anchors.top:     parent.top
-                anchors.left:    parent.left
-                anchors.margins: ScreenTools.defaultFontPixelWidth * 0.4
-                text:            qsTr("CAM 4")
-                color:           "white"
-                font.bold:       true
-                font.pointSize:  ScreenTools.smallFontPointSize
-                z:               1
-            }
-            Component { id: _s4GL;    QGCVideoBackground      { objectName: "videoContent4" } }
-            Component { id: _s4D3D11; QGCVideoBackgroundD3D11 { objectName: "videoContent4" } }
-            Component { id: _s4Metal; FlightDisplayViewMetal   { objectName: "videoContent4" } }
         }
 
         FlyViewWidgetLayer {
