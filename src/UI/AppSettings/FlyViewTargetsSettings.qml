@@ -163,11 +163,11 @@ SettingsGroupLayout {
                 QGCLabel { text: qsTr("X:") }
 
                 QGCTextField {
-                    Layout.preferredWidth: ScreenTools.defaultFontPixelWidth * 6
+                    Layout.preferredWidth: ScreenTools.defaultFontPixelWidth * 8
                     numericValuesOnly:     true
-                    validator:              IntValidator { bottom: 0; top: 100 }
-                    text:                   Math.round(_root._posXFact(index).value * 100)
-                    onEditingFinished:      _root._posXFact(index).value = parseInt(text) / 100
+                    validator:              DoubleValidator { bottom: 0; top: 100; decimals: 2; notation: DoubleValidator.StandardNotation }
+                    text:                   (_root._posXFact(index).value * 100).toFixed(2)
+                    onEditingFinished:      _root._posXFact(index).value = parseFloat(text) / 100
                 }
 
                 QGCLabel { text: qsTr("%") }
@@ -175,11 +175,11 @@ SettingsGroupLayout {
                 QGCLabel { text: qsTr("Y:") }
 
                 QGCTextField {
-                    Layout.preferredWidth: ScreenTools.defaultFontPixelWidth * 6
+                    Layout.preferredWidth: ScreenTools.defaultFontPixelWidth * 8
                     numericValuesOnly:     true
-                    validator:              IntValidator { bottom: 0; top: 100 }
-                    text:                   Math.round(_root._posYFact(index).value * 100)
-                    onEditingFinished:      _root._posYFact(index).value = parseInt(text) / 100
+                    validator:              DoubleValidator { bottom: 0; top: 100; decimals: 2; notation: DoubleValidator.StandardNotation }
+                    text:                   (_root._posYFact(index).value * 100).toFixed(2)
+                    onEditingFinished:      _root._posYFact(index).value = parseFloat(text) / 100
                 }
 
                 QGCLabel { text: qsTr("%") }
