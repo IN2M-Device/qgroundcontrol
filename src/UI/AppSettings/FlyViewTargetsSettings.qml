@@ -21,6 +21,15 @@ SettingsGroupLayout {
         }
     }
 
+    function _reticleStyleFact(index) {
+        switch (index) {
+        case 0:  return _flyViewSettings.target1ReticleStyle
+        case 1:  return _flyViewSettings.target2ReticleStyle
+        case 2:  return _flyViewSettings.target3ReticleStyle
+        default: return _flyViewSettings.target4ReticleStyle
+        }
+    }
+
     function _posXFact(index) {
         switch (index) {
         case 0:  return _flyViewSettings.target1PosX
@@ -98,12 +107,6 @@ SettingsGroupLayout {
         step:             1
     }
 
-    LabelledFactComboBox {
-        Layout.fillWidth: true
-        label:            qsTr("Reticle Style")
-        fact:             _root._flyViewSettings.reticleStyle
-    }
-
     Repeater {
         model: _root._flyViewSettings.targetCount.value
 
@@ -134,6 +137,21 @@ SettingsGroupLayout {
                         }
                     }
                 }
+
+                QGCLabel { text: qsTr("Style:") }
+
+                FactComboBox {
+                    Layout.preferredWidth: ScreenTools.defaultFontPixelWidth * 16
+                    sizeToContents:        true
+                    fact:                  _root._reticleStyleFact(index)
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing:          ScreenTools.defaultFontPixelWidth
+
+                Item { Layout.preferredWidth: ScreenTools.defaultFontPixelWidth * 10 } // align under "Target N"
 
                 QGCLabel { text: qsTr("X:") }
 

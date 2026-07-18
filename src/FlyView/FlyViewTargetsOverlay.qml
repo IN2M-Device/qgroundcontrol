@@ -26,6 +26,15 @@ Item {
         }
     }
 
+    function _reticleStyleFact(index) {
+        switch (index) {
+        case 0:  return _flyViewSettings.target1ReticleStyle
+        case 1:  return _flyViewSettings.target2ReticleStyle
+        case 2:  return _flyViewSettings.target3ReticleStyle
+        default: return _flyViewSettings.target4ReticleStyle
+        }
+    }
+
     function _posXFact(index) {
         switch (index) {
         case 0:  return _flyViewSettings.target1PosX
@@ -58,7 +67,7 @@ Item {
             readonly property real  _lineWidth:   Math.max(1, width * 0.06)
             readonly property real  _outerR:      width / 2 * 0.8
 
-            readonly property int  _style: _root._flyViewSettings.reticleStyle.value
+            readonly property int  _style: _root._reticleStyleFact(index).value
 
             // Number of concentric rings, whether the crosshair has a gap at the
             // ring, whether a center dot is shown, and any style-specific extras.

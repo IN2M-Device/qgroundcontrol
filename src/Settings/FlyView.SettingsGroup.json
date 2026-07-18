@@ -164,22 +164,22 @@
             "keywords": "target,reticle,overlay,count"
         },
         {
-            "name": "reticleStyle",
-            "shortDesc": "Visual style of the target reticles shown on the Fly View.",
-            "type": "uint32",
-            "enumStrings": "Bullseye Dot,Simple Gap,Bullseye Marks,Double Ring,Cross Ends,Offset Dot,Classic,Concentric,Focus Brackets",
-            "enumValues": "0,1,2,3,4,5,6,7,8",
-            "default": 6,
-            "label": "Reticle Style",
-            "keywords": "target,reticle,style,shape"
-        },
-        {
             "name": "target1Color",
             "shortDesc": "Color of target reticle 1.",
             "type": "string",
             "default": "#FF0000",
             "label": "Target 1 Color",
             "keywords": "target,reticle,color"
+        },
+        {
+            "name": "target1ReticleStyle",
+            "shortDesc": "Visual style of target reticle 1.",
+            "type": "uint32",
+            "enumStrings": "Bullseye Dot,Simple Gap,Bullseye Marks,Double Ring,Cross Ends,Offset Dot,Classic,Concentric,Focus Brackets",
+            "enumValues": "0,1,2,3,4,5,6,7,8",
+            "default": 6,
+            "label": "Target 1 Reticle Style",
+            "keywords": "target,reticle,style,shape"
         },
         {
             "name": "target1PosX",
@@ -210,6 +210,16 @@
             "keywords": "target,reticle,color"
         },
         {
+            "name": "target2ReticleStyle",
+            "shortDesc": "Visual style of target reticle 2.",
+            "type": "uint32",
+            "enumStrings": "Bullseye Dot,Simple Gap,Bullseye Marks,Double Ring,Cross Ends,Offset Dot,Classic,Concentric,Focus Brackets",
+            "enumValues": "0,1,2,3,4,5,6,7,8",
+            "default": 6,
+            "label": "Target 2 Reticle Style",
+            "keywords": "target,reticle,style,shape"
+        },
+        {
             "name": "target2PosX",
             "shortDesc": "Horizontal position of target reticle 2, as a fraction (0-1) of the Fly View width.",
             "type": "double",
@@ -238,6 +248,16 @@
             "keywords": "target,reticle,color"
         },
         {
+            "name": "target3ReticleStyle",
+            "shortDesc": "Visual style of target reticle 3.",
+            "type": "uint32",
+            "enumStrings": "Bullseye Dot,Simple Gap,Bullseye Marks,Double Ring,Cross Ends,Offset Dot,Classic,Concentric,Focus Brackets",
+            "enumValues": "0,1,2,3,4,5,6,7,8",
+            "default": 6,
+            "label": "Target 3 Reticle Style",
+            "keywords": "target,reticle,style,shape"
+        },
+        {
             "name": "target3PosX",
             "shortDesc": "Horizontal position of target reticle 3, as a fraction (0-1) of the Fly View width.",
             "type": "double",
@@ -264,6 +284,16 @@
             "default": "#FFFF00",
             "label": "Target 4 Color",
             "keywords": "target,reticle,color"
+        },
+        {
+            "name": "target4ReticleStyle",
+            "shortDesc": "Visual style of target reticle 4.",
+            "type": "uint32",
+            "enumStrings": "Bullseye Dot,Simple Gap,Bullseye Marks,Double Ring,Cross Ends,Offset Dot,Classic,Concentric,Focus Brackets",
+            "enumValues": "0,1,2,3,4,5,6,7,8",
+            "default": 6,
+            "label": "Target 4 Reticle Style",
+            "keywords": "target,reticle,style,shape"
         },
         {
             "name": "target4PosX",
