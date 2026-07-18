@@ -140,6 +140,13 @@ SettingsGroupLayout {
 
                 QGCLabel { text: qsTr("Style:") }
 
+                TargetReticleGraphic {
+                    Layout.preferredWidth: ScreenTools.defaultFontPixelHeight * 1.5
+                    Layout.preferredHeight: Layout.preferredWidth
+                    style:                  _root._reticleStyleFact(index).value
+                    reticleColor:           _root._colorFact(index).value
+                }
+
                 FactComboBox {
                     Layout.preferredWidth: ScreenTools.defaultFontPixelWidth * 16
                     sizeToContents:        true

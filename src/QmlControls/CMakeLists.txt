@@ -176,6 +176,7 @@ qt_add_qml_module(QGroundControlControlsModule
         SigningKeyManager.qml
         SliderSwitch.qml
         SubMenuButton.qml
+        TargetReticleGraphic.qml
         TimedProgressTracker.qml
         ToolIndicatorPage.qml
         ToolStrip.qml
