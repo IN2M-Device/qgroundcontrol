@@ -8,6 +8,7 @@ ToolStripActionList {
     id: _root
 
     signal displayPreFlightChecklist
+    signal toggleAllPips
 
     model: [
         Viewer3DShowAction { },
@@ -16,6 +17,7 @@ ToolStripActionList {
         GuidedActionLand { },
         GuidedActionRTL { },
         FlyViewTargetsButton { },
+        FlyViewPipExpandAllButton { onTriggered: toggleAllPips() },
         GuidedActionPause { },
         FlyViewAdditionalActionsButton { },
         FlyViewGripperButton { }

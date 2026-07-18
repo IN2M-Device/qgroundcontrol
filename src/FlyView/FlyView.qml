@@ -220,6 +220,8 @@ Item {
             parentToolInsets:       _toolInsets
             mapControl:             _mapControl
             visible:                !QGroundControl.videoManager.fullScreen
+
+            onToggleAllPips: allPipsExpanded = !allPipsExpanded
         }
 
         FlyViewCustomLayer {

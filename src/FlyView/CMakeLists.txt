@@ -33,6 +33,7 @@ qt_add_qml_module(FlyViewModule
         FlyViewGripperDropPanel.qml
         FlyViewMap.qml
         FlyViewMissionCompleteDialog.qml
+        FlyViewPipExpandAllButton.qml
         FlyViewPreFlightChecklistPopup.qml
         FlyViewTargetsButton.qml
         FlyViewTargetsOverlay.qml

@@ -36,6 +36,8 @@ Item {
     property bool   _layoutSpacing:         ScreenTools.defaultFontPixelWidth
     property bool   _showSingleVehicleUI:   true
 
+    signal toggleAllPips
+
     QGCToolInsets {
         id:                     _totalToolInsets
         leftEdgeTopInset:       toolStrip.leftEdgeTopInset
@@ -152,6 +154,7 @@ Item {
             }
             preFlightChecklistLoader.item.open()
         }
+        onToggleAllPips: _root.toggleAllPips()
 
         property real topEdgeLeftInset:     visible ? y + height : 0
         property real leftEdgeTopInset:     visible ? x + width : 0
