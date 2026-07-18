@@ -1,8 +1,10 @@
 import QtQuick
-import QtQuick.Controls
 import QtQuick.Dialogs
-import Qt.labs.platform
 
+// Uses QtQuick.Dialogs' ColorDialog (QML-only implementation) rather than
+// Qt.labs.platform's, which requires a native Qt Widgets backend that isn't
+// linked into mobile builds -- there it silently fails to open at all
+// ("No native ColorDialog implementation available").
 Rectangle {
     id:             _root
     width:          80
@@ -13,19 +15,17 @@ Rectangle {
     signal colorSelected(var color)
 
     ColorDialog {
-        id: colorDialog
-        onAccepted: {
-            _root.colorSelected(colorDialog.color)
-            colorDialog.close()
-        }
+        id:            colorDialog
+        selectedColor: _root.color
+        onAccepted:    _root.colorSelected(selectedColor)
     }
 
     MouseArea {
         anchors.fill: parent
 
         onClicked: {
-            colorDialog.color = _root.color
-            colorDialog.visible = true
+            colorDialog.selectedColor = _root.color
+            colorDialog.open()
         }
     }
 }
