@@ -89,6 +89,11 @@
             ]
         },
         {
+            "component": "FlyViewTargetsSettings",
+            "sectionName": "Targets",
+            "keywords": ["target", "reticle", "overlay", "aim"]
+        },
+        {
             "heading": "Instrument Panel",
             "keywords": ["compass", "indicators", "hud", "instrument", "nose up"],
             "controls": [

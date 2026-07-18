@@ -79,6 +79,7 @@ qt_add_qml_module(AppSettingsModule
         VideoSettings.qml
         BluetoothSettings.qml
         DebugWindow.qml
+        FlyViewTargetsSettings.qml
         GcsPositionStatus.qml
         HelpSettings.qml
         LinkConfigurationManager.qml

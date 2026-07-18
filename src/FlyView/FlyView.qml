@@ -52,6 +52,17 @@ Item {
     // 0 = no extra stream full; 2/3/4 = that stream's video fills the screen
     property int    _fullExtraStream:   0
 
+    // Master show/hide for every pip (stream 1 + extra streams).
+    // Toggled by the global pip button; individual per-pip buttons still work.
+    property bool   allPipsExpanded:    true
+
+    onAllPipsExpandedChanged: {
+        _pipView._setPipIsExpanded(allPipsExpanded)
+        _stream2._isExpanded = allPipsExpanded
+        _stream3._isExpanded = allPipsExpanded
+        _stream4._isExpanded = allPipsExpanded
+    }
+
     function _calcCenterViewPort() {
         var newToolInset = Qt.rect(0, 0, width, height)
         toolstrip.adjustToolInset(newToolInset)
@@ -236,6 +247,13 @@ Item {
             id:                 guidedActionsController
             missionController:  _missionController
             guidedValueSlider:     _guidedValueSlider
+        }
+
+        FlyViewTargetsOverlay {
+            id:             targetsOverlay
+            anchors.fill:   parent
+            z:              QGroundControl.zOrderTopMost
+            visible:        QGroundControl.settingsManager.flyViewSettings.showTargetsOverlay.value
         }
 
         //-- Guided value slider (e.g. altitude)

@@ -136,6 +136,154 @@
             "default": true,
             "label": "Enable automatic mission start/resume popups",
             "keywords": "mission popup"
+        },
+        {
+            "name": "showTargetsOverlay",
+            "shortDesc": "Show the target reticle overlay on the Fly View.",
+            "type": "bool",
+            "default": false,
+            "label": "Show target reticle overlay",
+            "keywords": "target,reticle,overlay"
+        },
+        {
+            "name": "showTargetsButton",
+            "shortDesc": "Show the Targets toggle button on the Fly View tool strip.",
+            "type": "bool",
+            "default": true,
+            "label": "Show Targets toggle button",
+            "keywords": "target,reticle,overlay,button"
+        },
+        {
+            "name": "targetCount",
+            "shortDesc": "Number of target reticles shown on the Fly View overlay.",
+            "type": "uint32",
+            "min": 1,
+            "max": 4,
+            "default": 1,
+            "label": "Number of targets",
+            "keywords": "target,reticle,overlay,count"
+        },
+        {
+            "name": "reticleStyle",
+            "shortDesc": "Visual style of the target reticles shown on the Fly View.",
+            "type": "uint32",
+            "enumStrings": "Bullseye Dot,Simple Gap,Bullseye Marks,Double Ring,Cross Ends,Offset Dot,Classic,Concentric,Focus Brackets",
+            "enumValues": "0,1,2,3,4,5,6,7,8",
+            "default": 6,
+            "label": "Reticle Style",
+            "keywords": "target,reticle,style,shape"
+        },
+        {
+            "name": "target1Color",
+            "shortDesc": "Color of target reticle 1.",
+            "type": "string",
+            "default": "#FF0000",
+            "label": "Target 1 Color",
+            "keywords": "target,reticle,color"
+        },
+        {
+            "name": "target1PosX",
+            "shortDesc": "Horizontal position of target reticle 1, as a fraction (0-1) of the Fly View width.",
+            "type": "double",
+            "min": 0.0,
+            "max": 1.0,
+            "default": 0.5,
+            "label": "Target 1 X Position",
+            "keywords": "target,reticle,position"
+        },
+        {
+            "name": "target1PosY",
+            "shortDesc": "Vertical position of target reticle 1, as a fraction (0-1) of the Fly View height.",
+            "type": "double",
+            "min": 0.0,
+            "max": 1.0,
+            "default": 0.5,
+            "label": "Target 1 Y Position",
+            "keywords": "target,reticle,position"
+        },
+        {
+            "name": "target2Color",
+            "shortDesc": "Color of target reticle 2.",
+            "type": "string",
+            "default": "#00FF00",
+            "label": "Target 2 Color",
+            "keywords": "target,reticle,color"
+        },
+        {
+            "name": "target2PosX",
+            "shortDesc": "Horizontal position of target reticle 2, as a fraction (0-1) of the Fly View width.",
+            "type": "double",
+            "min": 0.0,
+            "max": 1.0,
+            "default": 0.35,
+            "label": "Target 2 X Position",
+            "keywords": "target,reticle,position"
+        },
+        {
+            "name": "target2PosY",
+            "shortDesc": "Vertical position of target reticle 2, as a fraction (0-1) of the Fly View height.",
+            "type": "double",
+            "min": 0.0,
+            "max": 1.0,
+            "default": 0.35,
+            "label": "Target 2 Y Position",
+            "keywords": "target,reticle,position"
+        },
+        {
+            "name": "target3Color",
+            "shortDesc": "Color of target reticle 3.",
+            "type": "string",
+            "default": "#0000FF",
+            "label": "Target 3 Color",
+            "keywords": "target,reticle,color"
+        },
+        {
+            "name": "target3PosX",
+            "shortDesc": "Horizontal position of target reticle 3, as a fraction (0-1) of the Fly View width.",
+            "type": "double",
+            "min": 0.0,
+            "max": 1.0,
+            "default": 0.65,
+            "label": "Target 3 X Position",
+            "keywords": "target,reticle,position"
+        },
+        {
+            "name": "target3PosY",
+            "shortDesc": "Vertical position of target reticle 3, as a fraction (0-1) of the Fly View height.",
+            "type": "double",
+            "min": 0.0,
+            "max": 1.0,
+            "default": 0.35,
+            "label": "Target 3 Y Position",
+            "keywords": "target,reticle,position"
+        },
+        {
+            "name": "target4Color",
+            "shortDesc": "Color of target reticle 4.",
+            "type": "string",
+            "default": "#FFFF00",
+            "label": "Target 4 Color",
+            "keywords": "target,reticle,color"
+        },
+        {
+            "name": "target4PosX",
+            "shortDesc": "Horizontal position of target reticle 4, as a fraction (0-1) of the Fly View width.",
+            "type": "double",
+            "min": 0.0,
+            "max": 1.0,
+            "default": 0.5,
+            "label": "Target 4 X Position",
+            "keywords": "target,reticle,position"
+        },
+        {
+            "name": "target4PosY",
+            "shortDesc": "Vertical position of target reticle 4, as a fraction (0-1) of the Fly View height.",
+            "type": "double",
+            "min": 0.0,
+            "max": 1.0,
+            "default": 0.65,
+            "label": "Target 4 Y Position",
+            "keywords": "target,reticle,position"
         }
     ]
 }

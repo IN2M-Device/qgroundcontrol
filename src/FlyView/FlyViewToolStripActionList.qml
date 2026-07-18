@@ -15,6 +15,7 @@ ToolStripActionList {
         GuidedActionTakeoff { },
         GuidedActionLand { },
         GuidedActionRTL { },
+        FlyViewTargetsButton { },
         GuidedActionPause { },
         FlyViewAdditionalActionsButton { },
         FlyViewGripperButton { }
